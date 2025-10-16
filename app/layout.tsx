@@ -6,9 +6,8 @@ import { ThemeProvider } from "@/lib/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "Little Lab Rocket Recipes",
+  description: "A tool to help you visualize the recipes for Little Lab Rocket",
 }
 
 export default function RootLayout({
