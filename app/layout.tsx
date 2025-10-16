@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/lib/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Little Lab Rocket Recipes",
-  description: "A tool to help you visualize the recipes for Little Lab Rocket",
+  title: "Little Rocket Crafting Recipes",
+  description: "A tool to help you visualize the recipes and production lines!",
 }
 
 export default function RootLayout({

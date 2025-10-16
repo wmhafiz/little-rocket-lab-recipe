@@ -461,7 +461,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         data: {
           recipe,
           label: recipe.name,
-          onDelete: () => {},
+          onDelete: () => { },
         },
       }
       setNodes((nds) => [...nds, newNode])
@@ -622,8 +622,8 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Component Library</h2>
-                <p className="text-xs text-muted-foreground text-pretty">Click to add or drag handles to connect</p>
+                <h2 className="text-lg font-semibold">Recipes</h2>
+                <p className="text-xs text-muted-foreground text-pretty">More coming soon!</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsPanelOpen(false)} className="shrink-0">
                 <PanelLeftClose className="w-4 h-4" />
