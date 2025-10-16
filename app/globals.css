@@ -51,8 +51,8 @@
   --secondary: oklch(0.22 0.02 264);
   --secondary-foreground: oklch(0.95 0.01 264);
   --muted: oklch(0.2 0.02 264);
-  --muted-foreground: oklch(0.6 0.02 264);
-  --accent: oklch(0.6 0.22 290);
+  --muted-foreground: oklch(0.65 0.02 264);
+  --accent: oklch(0.65 0.22 290);
   --accent-foreground: oklch(0.95 0.01 264);
   --destructive: oklch(0.5 0.2 27);
   --destructive-foreground: oklch(0.95 0.01 264);
@@ -74,9 +74,8 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
-@theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Simplified theme block with direct values instead of calc() */
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -101,10 +100,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -121,5 +120,31 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Simplified React Flow styling - now using React Flow's native colorMode prop */
+/* Only keeping minimal customizations to align with app design tokens */
+@layer components {
+  /* Align React Flow with app color scheme */
+  .react-flow__minimap-node {
+    @apply fill-primary;
+  }
+
+  .react-flow__edge-path {
+    @apply stroke-primary;
+  }
+
+  /* Ensure handles match our design system */
+  .react-flow__handle {
+    @apply border-2;
+  }
+
+  .react-flow__handle-connecting {
+    @apply bg-primary;
+  }
+
+  .react-flow__handle-valid {
+    @apply bg-accent;
   }
 }

@@ -11,10 +11,10 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, highlightMaterials = [] }: RecipeCardProps) {
   return (
     <Card className="overflow-hidden transition-all hover:shadow-lg">
-      <CardHeader className="bg-gradient-to-br from-primary/10 to-accent/10 pb-4">
+      <CardHeader className="bg-gradient-to-br from-primary/15 to-accent/15 dark:from-primary/25 dark:to-accent/25 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <CardTitle className="text-xl font-bold text-balance">{recipe.name}</CardTitle>
+            <CardTitle className="text-xl font-bold text-balance text-foreground">{recipe.name}</CardTitle>
             <Badge variant="secondary" className="mt-2">
               {recipe.type}
             </Badge>
@@ -36,18 +36,22 @@ export function RecipeCard({ recipe, highlightMaterials = [] }: RecipeCardProps)
                 <div
                   key={index}
                   className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                    isHighlighted ? "bg-accent/20 border border-accent" : "bg-muted/50"
+                    isHighlighted
+                      ? "bg-accent/25 dark:bg-accent/30 border border-accent text-accent-foreground"
+                      : "bg-muted/50 dark:bg-muted/30"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${isHighlighted ? "bg-accent" : "bg-muted-foreground"}`} />
-                    <span className={`font-medium ${isHighlighted ? "text-accent-foreground" : ""}`}>
+                    <div
+                      className={`w-2 h-2 rounded-full ${isHighlighted ? "bg-accent dark:bg-accent" : "bg-muted-foreground"}`}
+                    />
+                    <span className={`font-medium ${isHighlighted ? "text-foreground" : "text-foreground"}`}>
                       {ingredient.item}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-right">
-                      <div className="font-bold">{ingredient.quantity}</div>
+                      <div className="font-bold text-foreground">{ingredient.quantity}</div>
                       <div className="text-xs text-muted-foreground">qty</div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-muted-foreground" />
