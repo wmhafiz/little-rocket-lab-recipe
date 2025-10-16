@@ -209,7 +209,7 @@ const CRAFTING_RECIPES: CraftRecipe[] = [
     type: "Machinery",
     name: "Power Pole (with light)",
     outputPerMin: "10",
-    icon: "/recipes/Power Pole (with light).png",
+    icon: "/recipes/Power Pole (With Light).png",
     ingredients: [
       { item: "Iron Plate", quantity: "6", quantityPerMin: "60" },
       { item: "Copper Wire", quantity: "9", quantityPerMin: "90" },
