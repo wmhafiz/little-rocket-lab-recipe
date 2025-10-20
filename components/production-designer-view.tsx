@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState, useMemo, useRef } from "react"
+import { useCallback, useState, useMemo, useRef, useEffect } from "react"
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -24,7 +24,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen } from "lucide-react"
+import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu } from "lucide-react"
 import type { CraftRecipe, RecipeNodeData } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
 import { useTheme } from "@/lib/theme-provider"
@@ -32,6 +32,21 @@ import { ThemeToggle } from "./theme-toggle"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { SlotSelectorDialog } from "./slot-selector-dialog"
+import { MobileMenuSheet } from "./mobile-menu-sheet"
+import {
+  migrateOldStorage,
+  getSlotMetadata,
+  saveFlowToSlot,
+  loadFlowFromSlot,
+  deleteSlot,
+  editSlotMetadata,
+  getCurrentActiveSlot,
+  setCurrentActiveSlot,
+  type SlotInfo,
+  type FlowData,
+} from "@/lib/slot-storage"
+import { toast } from "sonner"
 
 interface ProductionDesignerViewProps {
   recipes: CraftRecipe[]
@@ -174,6 +189,11 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isAutoBuilding, setIsAutoBuilding] = useState(false)
   const [rfInstance, setRfInstance] = useState<any>(null)
+  const [currentSlot, setCurrentSlot] = useState<number>(0)
+  const [slots, setSlots] = useState<SlotInfo[]>([])
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false)
+  const [showLoadDialog, setShowLoadDialog] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const { theme } = useTheme()
   const { screenToFlowPosition, fitView, deleteElements, setViewport } = useReactFlow()
   const connectionState = useRef<ConnectionState>({
@@ -182,6 +202,13 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     handleType: null,
     material: null,
   })
+
+  // Run migration and load slot metadata on mount
+  useEffect(() => {
+    migrateOldStorage()
+    setCurrentSlot(getCurrentActiveSlot())
+    setSlots(getSlotMetadata())
+  }, [])
 
   const existingRecipeNames = useMemo(() => {
     return new Set(nodes.map((node) => node.data.recipe.name))
@@ -475,27 +502,131 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     setEdges([])
   }, [setNodes, setEdges])
 
+  // Quick save to current active slot
   const onSave = useCallback(() => {
-    if (rfInstance) {
+    if (!rfInstance) {
+      toast.error("Unable to save: Flow not initialized")
+      return
+    }
+
+    try {
       const flow = rfInstance.toObject()
-      localStorage.setItem("lrl-designer-flow", JSON.stringify(flow))
-    }
-  }, [rfInstance])
+      const slot = slots[currentSlot]
 
-  const onRestore = useCallback(() => {
-    const restoreFlow = async () => {
-      const flow = JSON.parse(localStorage.getItem("lrl-designer-flow") || "null")
-
-      if (flow) {
-        const { x = 0, y = 0, zoom = 1 } = flow.viewport || {}
-        setNodes(flow.nodes || [])
-        setEdges(flow.edges || [])
-        setViewport({ x, y, zoom })
+      // If current slot is empty, use "Save As" instead
+      if (slot.isEmpty) {
+        setShowSaveAsDialog(true)
+        return
       }
-    }
 
-    restoreFlow()
-  }, [setNodes, setEdges, setViewport])
+      // Save to current slot with existing metadata
+      saveFlowToSlot(currentSlot, flow, slot.title, slot.description)
+      setSlots(getSlotMetadata())
+      toast.success(`Saved to "${slot.title}"`)
+    } catch (error) {
+      console.error("Save failed:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to save")
+    }
+  }, [rfInstance, currentSlot, slots])
+
+  // Quick restore from current active slot
+  const onRestore = useCallback(() => {
+    try {
+      const flowData = loadFlowFromSlot(currentSlot)
+
+      if (!flowData) {
+        toast.error("No saved flow in current slot")
+        return
+      }
+
+      const { x = 0, y = 0, zoom = 1 } = flowData.viewport || {}
+      setNodes(flowData.nodes || [])
+      setEdges(flowData.edges || [])
+      setViewport({ x, y, zoom }, { duration: 300 })
+
+      const slot = slots[currentSlot]
+      toast.success(`Restored "${slot.title}"`)
+    } catch (error) {
+      console.error("Restore failed:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to restore")
+    }
+  }, [currentSlot, setNodes, setEdges, setViewport, slots])
+
+  // Save As - select slot and enter metadata
+  const handleSaveAs = useCallback(
+    (slotIndex: number, title: string, description: string) => {
+      if (!rfInstance) {
+        toast.error("Unable to save: Flow not initialized")
+        return
+      }
+
+      try {
+        const flow = rfInstance.toObject()
+        saveFlowToSlot(slotIndex, flow, title, description)
+        setCurrentActiveSlot(slotIndex)
+        setCurrentSlot(slotIndex)
+        setSlots(getSlotMetadata())
+        toast.success(`Saved to slot ${slotIndex}: "${title}"`)
+      } catch (error) {
+        console.error("Save As failed:", error)
+        toast.error(error instanceof Error ? error.message : "Failed to save")
+      }
+    },
+    [rfInstance],
+  )
+
+  // Load - select different slot to load
+  const handleLoad = useCallback(
+    (slotIndex: number) => {
+      try {
+        const flowData = loadFlowFromSlot(slotIndex)
+
+        if (!flowData) {
+          toast.error("Slot is empty")
+          return
+        }
+
+        const { x = 0, y = 0, zoom = 1 } = flowData.viewport || {}
+        setNodes(flowData.nodes || [])
+        setEdges(flowData.edges || [])
+        setViewport({ x, y, zoom }, { duration: 300 })
+        setCurrentActiveSlot(slotIndex)
+        setCurrentSlot(slotIndex)
+
+        const slot = slots[slotIndex]
+        toast.success(`Loaded "${slot.title}"`)
+      } catch (error) {
+        console.error("Load failed:", error)
+        toast.error(error instanceof Error ? error.message : "Failed to load")
+      }
+    },
+    [setNodes, setEdges, setViewport, slots],
+  )
+
+  // Delete slot
+  const handleDeleteSlot = useCallback((slotIndex: number) => {
+    try {
+      deleteSlot(slotIndex)
+      setSlots(getSlotMetadata())
+      setCurrentSlot(getCurrentActiveSlot())
+      toast.success("Slot deleted")
+    } catch (error) {
+      console.error("Delete failed:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to delete slot")
+    }
+  }, [])
+
+  // Edit slot metadata
+  const handleEditSlotMetadata = useCallback((slotIndex: number, title: string, description: string) => {
+    try {
+      editSlotMetadata(slotIndex, title, description)
+      setSlots(getSlotMetadata())
+      toast.success("Slot metadata updated")
+    } catch (error) {
+      console.error("Edit failed:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to update metadata")
+    }
+  }, [])
 
   const deleteNode = useCallback(
     (nodeId: string) => {
@@ -766,29 +897,88 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
           maskColor="hsl(var(--background) / 0.5)"
         />
         <Panel position="top-right" className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={autoBuild} className="gap-2" disabled={isAutoBuilding}>
-            <Sparkles className="w-4 h-4" />
-            {isAutoBuilding ? "Building..." : "Auto Build"}
+          {/* Desktop buttons - hidden on mobile */}
+          <div className="hidden lg:flex gap-2">
+            <Button variant="secondary" size="sm" onClick={autoBuild} className="gap-2" disabled={isAutoBuilding}>
+              <Sparkles className="w-4 h-4" />
+              {isAutoBuilding ? "Building..." : "Auto Build"}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => onLayout("horizontal")} className="gap-2">
+              <ArrowRightToLine className="w-4 h-4" />
+              Auto Layout
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onRestore} className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              Restore
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onSave} className="gap-2">
+              <Save className="w-4 h-4" />
+              Save
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowSaveAsDialog(true)} className="gap-2">
+              <FolderPlus className="w-4 h-4" />
+              Save As
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowLoadDialog(true)} className="gap-2">
+              <Files className="w-4 h-4" />
+              Load
+            </Button>
+            <Button variant="destructive" size="sm" onClick={clearCanvas} className="gap-2">
+              <Trash2 className="w-4 h-4" />
+              Clear Canvas
+            </Button>
+            <ThemeToggle />
+          </div>
+
+          {/* Mobile hamburger menu button - visible on mobile only */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowMobileMenu(true)}
+            className="lg:hidden gap-2"
+          >
+            <Menu className="w-4 h-4" />
+            Menu
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => onLayout("horizontal")} className="gap-2">
-            <ArrowRightToLine className="w-4 h-4" />
-            Auto Layout
-          </Button>
-          <Button variant="secondary" size="sm" onClick={onRestore} className="gap-2">
-            <FolderOpen className="w-4 h-4" />
-            Restore
-          </Button>
-          <Button variant="secondary" size="sm" onClick={onSave} className="gap-2">
-            <Save className="w-4 h-4" />
-            Save
-          </Button>
-          <Button variant="destructive" size="sm" onClick={clearCanvas} className="gap-2">
-            <Trash2 className="w-4 h-4" />
-            Clear Canvas
-          </Button>
-          <ThemeToggle />
         </Panel>
       </ReactFlow>
+
+      {/* Slot Management Dialogs */}
+      <SlotSelectorDialog
+        open={showSaveAsDialog}
+        onOpenChange={setShowSaveAsDialog}
+        mode="save"
+        slots={slots}
+        currentSlot={currentSlot}
+        onSave={handleSaveAs}
+        onEdit={handleEditSlotMetadata}
+        onDelete={handleDeleteSlot}
+      />
+
+      <SlotSelectorDialog
+        open={showLoadDialog}
+        onOpenChange={setShowLoadDialog}
+        mode="load"
+        slots={slots}
+        currentSlot={currentSlot}
+        onLoad={handleLoad}
+        onEdit={handleEditSlotMetadata}
+        onDelete={handleDeleteSlot}
+      />
+
+      {/* Mobile Menu */}
+      <MobileMenuSheet
+        open={showMobileMenu}
+        onOpenChange={setShowMobileMenu}
+        onAutoBuild={autoBuild}
+        onAutoLayout={() => onLayout("horizontal")}
+        onRestore={onRestore}
+        onSave={onSave}
+        onSaveAs={() => setShowSaveAsDialog(true)}
+        onLoad={() => setShowLoadDialog(true)}
+        onClearCanvas={clearCanvas}
+        isAutoBuilding={isAutoBuilding}
+      />
     </div>
   )
 }

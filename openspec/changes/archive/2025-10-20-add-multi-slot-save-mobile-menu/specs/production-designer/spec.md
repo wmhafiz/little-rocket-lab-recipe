@@ -1,112 +1,6 @@
-# production-designer Specification
+# Production Designer Specification
 
-## Purpose
-TBD - created by archiving change add-save-restore-flow. Update Purpose after archive.
-## Requirements
-### Requirement: Flow State Persistence
-
-The production designer SHALL provide the ability to save and restore the complete flow state including nodes, edges, and viewport configuration using a slot-based system.
-
-#### Scenario: Save current flow
-
-- **WHEN** user clicks the "Save" button in the top-right panel
-- **THEN** the current flow state (all nodes, edges, and viewport position/zoom) SHALL be serialized and stored in browser localStorage with the key `lrl-designer-slot-{N}` where N is the current active slot index
-- **AND** the slot metadata SHALL be updated with current timestamp
-
-#### Scenario: Restore saved flow
-
-- **WHEN** user clicks the "Restore" button in the top-right panel
-- **AND** the current active slot has saved flow data
-- **THEN** the saved nodes SHALL be restored to the canvas
-- **AND** the saved edges SHALL be restored to the canvas
-- **AND** the viewport SHALL be restored to the saved position and zoom level
-
-#### Scenario: Restore with no saved flow
-
-- **WHEN** user clicks the "Restore" button in the top-right panel
-- **AND** the current active slot is empty
-- **THEN** no action SHALL be taken (graceful no-op)
-
-#### Scenario: Flow state includes viewport
-
-- **WHEN** a flow is saved to any slot
-- **THEN** the viewport x position, y position, and zoom level SHALL be included in the saved state
-- **AND** these viewport properties SHALL be restored when the flow is loaded
-
-### Requirement: Save and Restore UI Controls
-
-The production designer SHALL provide intuitive UI controls for saving and restoring flows in the top-right control panel, with quick-access buttons and explicit slot management buttons.
-
-#### Scenario: Save button placement
-
-- **WHEN** user views the Designer tab on desktop
-- **THEN** a "Save" button SHALL be visible in the top-right Panel
-- **AND** the button SHALL be positioned after the "Restore" button
-- **AND** the button SHALL display a Save icon from lucide-react
-- **AND** the button SHALL use variant="secondary" and size="sm" styling
-- **AND** clicking it SHALL save to the current active slot without showing a dialog
-
-#### Scenario: Restore button placement
-
-- **WHEN** user views the Designer tab on desktop
-- **THEN** a "Restore" button SHALL be visible in the top-right Panel
-- **AND** the button SHALL be positioned after the "Auto Layout" button
-- **AND** the button SHALL display a FolderOpen icon from lucide-react
-- **AND** the button SHALL use variant="secondary" and size="sm" styling
-- **AND** clicking it SHALL restore from the current active slot without showing a dialog
-
-#### Scenario: Button visual consistency
-
-- **WHEN** user views the control panel buttons
-- **THEN** the Save, Restore, Save As, and Load buttons SHALL have consistent styling with existing panel buttons (Auto Build, Auto Layout, Clear Canvas, Theme Toggle)
-- **AND** the buttons SHALL include both icon and text label for clarity on desktop
-- **AND** on mobile menu, buttons SHALL be full-width with left-aligned icon and text
-
-### Requirement: Flow Serialization Format
-
-The production designer SHALL use ReactFlow's native serialization format for saving and restoring flows across all slots.
-
-#### Scenario: Serialize using ReactFlow instance
-
-- **WHEN** saving a flow to any slot
-- **THEN** the system SHALL use the ReactFlow instance's `toObject()` method to serialize the flow
-- **AND** the serialized object SHALL include nodes array, edges array, and viewport object
-
-#### Scenario: Storage format
-
-- **WHEN** storing the flow in localStorage
-- **THEN** the flow object SHALL be converted to JSON string using `JSON.stringify()`
-- **AND** the JSON string SHALL be stored with the key `lrl-designer-slot-{N}` where N is the slot index
-
-#### Scenario: Restore format parsing
-
-- **WHEN** restoring a flow from any slot
-- **THEN** the JSON string SHALL be parsed using `JSON.parse()`
-- **AND** the parsed object SHALL contain nodes, edges, and viewport properties
-- **AND** default values SHALL be used if any property is missing (x=0, y=0, zoom=1)
-
-### Requirement: State Management Integration
-
-The save and restore functionality SHALL integrate seamlessly with existing ReactFlow state management hooks.
-
-#### Scenario: Save uses ReactFlow instance
-
-- **WHEN** implementing save functionality
-- **THEN** the system SHALL use the `rfInstance` state variable obtained from ReactFlow's `onInit` callback
-- **AND** the save operation SHALL only proceed if `rfInstance` exists
-
-#### Scenario: Restore uses state setters
-
-- **WHEN** implementing restore functionality
-- **THEN** the system SHALL use `setNodes()` from `useNodesState` hook to restore nodes
-- **AND** the system SHALL use `setEdges()` from `useEdgesState` hook to restore edges
-- **AND** the system SHALL use `setViewport()` from `useReactFlow` hook to restore viewport
-
-#### Scenario: Callback optimization
-
-- **WHEN** defining save and restore functions
-- **THEN** both functions SHALL be wrapped in `useCallback` hook for performance optimization
-- **AND** appropriate dependencies SHALL be specified in the dependency array
+## ADDED Requirements
 
 ### Requirement: Multiple Save Slots
 
@@ -298,3 +192,86 @@ The production designer SHALL migrate existing single-slot save data to the new 
 - **AND** all slots SHALL be initialized as empty
 - **AND** slot 0 SHALL be set as the default current active slot
 
+## MODIFIED Requirements
+
+### Requirement: Flow State Persistence
+
+The production designer SHALL provide the ability to save and restore the complete flow state including nodes, edges, and viewport configuration using a slot-based system.
+
+#### Scenario: Save current flow
+
+- **WHEN** user clicks the "Save" button in the top-right panel
+- **THEN** the current flow state (all nodes, edges, and viewport position/zoom) SHALL be serialized and stored in browser localStorage with the key `lrl-designer-slot-{N}` where N is the current active slot index
+- **AND** the slot metadata SHALL be updated with current timestamp
+
+#### Scenario: Restore saved flow
+
+- **WHEN** user clicks the "Restore" button in the top-right panel
+- **AND** the current active slot has saved flow data
+- **THEN** the saved nodes SHALL be restored to the canvas
+- **AND** the saved edges SHALL be restored to the canvas
+- **AND** the viewport SHALL be restored to the saved position and zoom level
+
+#### Scenario: Restore with no saved flow
+
+- **WHEN** user clicks the "Restore" button in the top-right panel
+- **AND** the current active slot is empty
+- **THEN** no action SHALL be taken (graceful no-op)
+
+#### Scenario: Flow state includes viewport
+
+- **WHEN** a flow is saved to any slot
+- **THEN** the viewport x position, y position, and zoom level SHALL be included in the saved state
+- **AND** these viewport properties SHALL be restored when the flow is loaded
+
+### Requirement: Save and Restore UI Controls
+
+The production designer SHALL provide intuitive UI controls for saving and restoring flows in the top-right control panel, with quick-access buttons and explicit slot management buttons.
+
+#### Scenario: Save button placement
+
+- **WHEN** user views the Designer tab on desktop
+- **THEN** a "Save" button SHALL be visible in the top-right Panel
+- **AND** the button SHALL be positioned after the "Restore" button
+- **AND** the button SHALL display a Save icon from lucide-react
+- **AND** the button SHALL use variant="secondary" and size="sm" styling
+- **AND** clicking it SHALL save to the current active slot without showing a dialog
+
+#### Scenario: Restore button placement
+
+- **WHEN** user views the Designer tab on desktop
+- **THEN** a "Restore" button SHALL be visible in the top-right Panel
+- **AND** the button SHALL be positioned after the "Auto Layout" button
+- **AND** the button SHALL display a FolderOpen icon from lucide-react
+- **AND** the button SHALL use variant="secondary" and size="sm" styling
+- **AND** clicking it SHALL restore from the current active slot without showing a dialog
+
+#### Scenario: Button visual consistency
+
+- **WHEN** user views the control panel buttons
+- **THEN** the Save, Restore, Save As, and Load buttons SHALL have consistent styling with existing panel buttons (Auto Build, Auto Layout, Clear Canvas, Theme Toggle)
+- **AND** the buttons SHALL include both icon and text label for clarity on desktop
+- **AND** on mobile menu, buttons SHALL be full-width with left-aligned icon and text
+
+### Requirement: Flow Serialization Format
+
+The production designer SHALL use ReactFlow's native serialization format for saving and restoring flows across all slots.
+
+#### Scenario: Serialize using ReactFlow instance
+
+- **WHEN** saving a flow to any slot
+- **THEN** the system SHALL use the ReactFlow instance's `toObject()` method to serialize the flow
+- **AND** the serialized object SHALL include nodes array, edges array, and viewport object
+
+#### Scenario: Storage format
+
+- **WHEN** storing the flow in localStorage
+- **THEN** the flow object SHALL be converted to JSON string using `JSON.stringify()`
+- **AND** the JSON string SHALL be stored with the key `lrl-designer-slot-{N}` where N is the slot index
+
+#### Scenario: Restore format parsing
+
+- **WHEN** restoring a flow from any slot
+- **THEN** the JSON string SHALL be parsed using `JSON.parse()`
+- **AND** the parsed object SHALL contain nodes, edges, and viewport properties
+- **AND** default values SHALL be used if any property is missing (x=0, y=0, zoom=1)
