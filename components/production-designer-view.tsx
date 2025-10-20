@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu } from "lucide-react"
-import type { CraftRecipe, RecipeNodeData } from "@/lib/types"
+import type { CraftRecipe, RecipeNodeData, OptimalProductionMap } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
 import { ResourceIconNode } from "./resource-icon-node"
 import { MachineryIconNode } from "./machinery-icon-node"
@@ -49,6 +49,7 @@ import {
   type FlowData,
 } from "@/lib/slot-storage"
 import { toast } from "sonner"
+import { calculateOptimalProduction } from "@/lib/optimal-production-calculator"
 
 interface ProductionDesignerViewProps {
   recipes: CraftRecipe[]
@@ -227,6 +228,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [optimalProduction, setOptimalProduction] = useState<OptimalProductionMap>(new Map())
   const { theme } = useTheme()
   const { screenToFlowPosition, fitView, deleteElements, setViewport } = useReactFlow()
   const connectionState = useRef<ConnectionState>({
@@ -242,6 +244,12 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     setCurrentSlot(getCurrentActiveSlot())
     setSlots(getSlotMetadata())
   }, [])
+
+  // Calculate optimal production requirements when nodes or edges change
+  useEffect(() => {
+    const calculations = calculateOptimalProduction(nodes, edges, recipes)
+    setOptimalProduction(calculations)
+  }, [nodes, edges, recipes])
 
   const existingRecipeNames = useMemo(() => {
     return new Set(nodes.map((node) => node.data.recipe.name))
@@ -793,9 +801,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         ...node.data,
         selected: node.selected,
         onDelete: deleteNode,
+        optimalProduction: optimalProduction.get(node.id),
       },
     }))
-  }, [nodes, deleteNode])
+  }, [nodes, deleteNode, optimalProduction])
 
   return (
     <div className="relative h-screen w-screen">

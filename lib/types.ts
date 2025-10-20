@@ -15,4 +15,19 @@ export interface RecipeNodeData {
   label: string
   selected?: boolean
   onDelete?: (nodeId: string) => void
+  optimalProduction?: OptimalProductionData
 }
+
+export type ProductionStatus = "optimal" | "excess" | "deficit" | "disconnected" | "cycle"
+
+export interface OptimalProductionData {
+  requiredPerMin: number
+  status: ProductionStatus
+  consumers?: Array<{
+    nodeId: string
+    nodeName: string
+    requiredAmount: number
+  }>
+}
+
+export type OptimalProductionMap = Map<string, OptimalProductionData>
