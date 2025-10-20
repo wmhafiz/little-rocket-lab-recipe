@@ -593,6 +593,63 @@ const CRAFTING_RECIPES: CraftRecipe[] = [
       { item: "Steel Beam", quantity: "1", quantityPerMin: "10" },
     ],
   },
+  // Resources (raw materials - output only, no inputs)
+  {
+    type: "Resource",
+    name: "Coal",
+    outputPerMin: "N/A",
+    icon: "/recipes/Coal.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Iron Ore",
+    outputPerMin: "N/A",
+    icon: "/recipes/Iron Ore.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Copper Ore",
+    outputPerMin: "N/A",
+    icon: "/recipes/Copper Ore.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Stone",
+    outputPerMin: "N/A",
+    icon: "/recipes/Stone.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Wood",
+    outputPerMin: "N/A",
+    icon: "/recipes/Wood.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Quartz",
+    outputPerMin: "N/A",
+    icon: "/recipes/Quartz.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Computer Tower",
+    outputPerMin: "N/A",
+    icon: "/recipes/Computer Tower.png",
+    ingredients: [],
+  },
+  {
+    type: "Resource",
+    name: "Computer Monitor",
+    outputPerMin: "N/A",
+    icon: "/recipes/Computer Monitor.png",
+    ingredients: [],
+  },
 ]
 
 export async function fetchCraftingData(): Promise<CraftRecipe[]> {

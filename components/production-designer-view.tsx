@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button"
 import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu } from "lucide-react"
 import type { CraftRecipe, RecipeNodeData } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
+import { ResourceIconNode } from "./resource-icon-node"
+import { MachineryIconNode } from "./machinery-icon-node"
 import { useTheme } from "@/lib/theme-provider"
 import { ThemeToggle } from "./theme-toggle"
 import { Badge } from "@/components/ui/badge"
@@ -54,6 +56,8 @@ interface ProductionDesignerViewProps {
 
 const nodeTypes = {
   recipeNode: RecipeNode,
+  resourceIconNode: ResourceIconNode,
+  machineryIconNode: MachineryIconNode,
 }
 
 interface ConnectionState {
@@ -77,9 +81,37 @@ const categorizeRecipes = (recipes: CraftRecipe[]) => {
   return Array.from(categories.entries()).sort((a, b) => a[0].localeCompare(b[0]))
 }
 
+/**
+ * Determine the appropriate node type based on recipe type
+ * - Resource nodes: output-only icon nodes (raw materials)
+ * - Machinery nodes: input-only icon nodes (end products)
+ * - Other nodes: full card display (components, materials, repair)
+ */
+const getNodeTypeForRecipe = (recipe: CraftRecipe): string => {
+  if (recipe.type === "Resource") {
+    return "resourceIconNode"
+  }
+  if (recipe.type === "Machinery") {
+    return "machineryIconNode"
+  }
+  return "recipeNode"
+}
+
+/**
+ * Get node dimensions based on node type
+ * - Icon nodes (resource/machinery): 64x64
+ * - Full card nodes: 280x200
+ */
+const getNodeDimensions = (node: Node): { width: number; height: number } => {
+  if (node.type === "resourceIconNode" || node.type === "machineryIconNode") {
+    return { width: 64, height: 64 }
+  }
+  return { width: 280, height: 200 }
+}
+
 const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "horizontal" | "vertical" = "horizontal") => {
-  const nodeWidth = 280
-  const nodeHeight = 200
+  const defaultNodeWidth = 280
+  const defaultNodeHeight = 200
   const horizontalSpacing = 200
   const verticalSpacing = 150
 
@@ -157,19 +189,20 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "horizonta
     const layer = nodeLayer.get(node.id) || 0
     const nodesInLayer = layers[layer] || []
     const indexInLayer = nodesInLayer.indexOf(node.id)
+    const { width: nodeWidth, height: nodeHeight } = getNodeDimensions(node)
 
     let x: number, y: number
 
     if (direction === "horizontal") {
-      x = layer * (nodeWidth + horizontalSpacing)
+      x = layer * (defaultNodeWidth + horizontalSpacing)
       y =
-        indexInLayer * (nodeHeight + verticalSpacing) - ((nodesInLayer.length - 1) * (nodeHeight + verticalSpacing)) / 2
+        indexInLayer * (defaultNodeHeight + verticalSpacing) - ((nodesInLayer.length - 1) * (defaultNodeHeight + verticalSpacing)) / 2
     } else {
       // vertical layout
       x =
-        indexInLayer * (nodeWidth + horizontalSpacing) -
-        ((nodesInLayer.length - 1) * (nodeWidth + horizontalSpacing)) / 2
-      y = layer * (nodeHeight + verticalSpacing)
+        indexInLayer * (defaultNodeWidth + horizontalSpacing) -
+        ((nodesInLayer.length - 1) * (defaultNodeWidth + horizontalSpacing)) / 2
+      y = layer * (defaultNodeHeight + verticalSpacing)
     }
 
     return {
@@ -345,7 +378,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
               const newNode: Node<RecipeNodeData> = {
                 id: newNodeId,
-                type: "recipeNode",
+                type: getNodeTypeForRecipe(recipe),
                 position,
                 data: { recipe, label: recipe.name },
               }
@@ -389,7 +422,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
               const newNode: Node<RecipeNodeData> = {
                 id: newNodeId,
-                type: "recipeNode",
+                type: getNodeTypeForRecipe(recipe),
                 position,
                 data: { recipe, label: recipe.name },
               }
@@ -481,7 +514,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       const newNode: Node<RecipeNodeData> = {
         id: `${recipe.name}-${Date.now()}`,
-        type: "recipeNode",
+        type: getNodeTypeForRecipe(recipe),
         position: {
           x: Math.random() * 400 + 100,
           y: Math.random() * 400 + 100,
@@ -710,7 +743,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
             const newNodeId = `${producerRecipe.name}-${Date.now()}-${Math.random()}`
             const newNode: Node<RecipeNodeData> = {
               id: newNodeId,
-              type: "recipeNode",
+              type: getNodeTypeForRecipe(producerRecipe),
               position: {
                 x: currentNode.position.x - 350,
                 y: currentNode.position.y + (ingredientIndex - recipe.ingredients.length / 2) * 250,
