@@ -4,7 +4,7 @@ import { memo } from "react"
 import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Trash2, AlertTriangle } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
@@ -13,8 +13,9 @@ import Image from "next/image"
  * ResourceIconNode - Compact icon-only node for raw material resources
  * Displays only an output handle (right side) since resources have no inputs
  */
-export const ResourceIconNode = memo(({ data, id }: NodeProps<RecipeNodeData>) => {
-    const { recipe, onDelete, optimalProduction } = data
+export const ResourceIconNode = memo(({ data, id }: NodeProps) => {
+    const typedData = data as RecipeNodeData
+    const { recipe, onDelete, optimalProduction } = typedData
 
     // Helper to get status color classes
     const getStatusColor = (status: string) => {
@@ -90,7 +91,7 @@ export const ResourceIconNode = memo(({ data, id }: NodeProps<RecipeNodeData>) =
     return (
         <>
             <NodeToolbar
-                isVisible={data.selected}
+                isVisible={typedData.selected}
                 position={Position.Top}
                 offset={10}
                 className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"
@@ -126,26 +127,24 @@ export const ResourceIconNode = memo(({ data, id }: NodeProps<RecipeNodeData>) =
 
                 {/* Production Indicator Badge */}
                 {optimalProduction && optimalProduction.status !== "disconnected" && (
-                    <TooltipProvider>
-                        <Tooltip delayDuration={500}>
-                            <TooltipTrigger asChild>
-                                <div className="absolute -top-1 -right-1 z-10">
-                                    {optimalProduction.status === "cycle" ? (
-                                        <Badge className={getStatusColor("cycle")} variant="default">
-                                            <AlertTriangle className="w-2.5 h-2.5" />
-                                        </Badge>
-                                    ) : (
-                                        <Badge className={`${getStatusColor(optimalProduction.status)} text-[10px] px-1.5 py-0.5 font-semibold`} variant="default">
-                                            {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
-                                {getTooltipContent()}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    <Tooltip delayDuration={500}>
+                        <TooltipTrigger asChild>
+                            <div className="absolute -top-1 -right-1 z-10">
+                                {optimalProduction.status === "cycle" ? (
+                                    <Badge className={getStatusColor("cycle")} variant="default">
+                                        <AlertTriangle className="w-2.5 h-2.5" />
+                                    </Badge>
+                                ) : (
+                                    <Badge className={`${getStatusColor(optimalProduction.status)} text-[10px] px-1.5 py-0.5 font-semibold`} variant="default">
+                                        {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
+                                    </Badge>
+                                )}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
+                            {getTooltipContent()}
+                        </TooltipContent>
+                    </Tooltip>
                 )}
 
                 {/* Output Handle (right side) */}

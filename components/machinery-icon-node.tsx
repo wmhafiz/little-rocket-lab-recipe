@@ -11,8 +11,9 @@ import Image from "next/image"
  * MachineryIconNode - Compact icon-only node for machinery (end products)
  * Displays only input handles (left side) since machinery are end products with no outputs
  */
-export const MachineryIconNode = memo(({ data, id }: NodeProps<RecipeNodeData>) => {
-    const { recipe, onDelete } = data
+export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
+    const typedData = data as RecipeNodeData
+    const { recipe, onDelete } = typedData
     const ingredientCount = recipe.ingredients.length
 
     // Calculate vertical spacing for input handles
@@ -22,7 +23,7 @@ export const MachineryIconNode = memo(({ data, id }: NodeProps<RecipeNodeData>) 
     return (
         <>
             <NodeToolbar
-                isVisible={data.selected}
+                isVisible={typedData.selected}
                 position={Position.Top}
                 offset={10}
                 className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"

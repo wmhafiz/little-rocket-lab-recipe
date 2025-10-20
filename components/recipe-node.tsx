@@ -5,13 +5,14 @@ import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Trash2, AlertTriangle } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
 
-export const RecipeNode = memo(({ data, id }: NodeProps<RecipeNodeData>) => {
-  const { recipe, onDelete, optimalProduction } = data
+export const RecipeNode = memo(({ data, id }: NodeProps) => {
+  const typedData = data as RecipeNodeData
+  const { recipe, onDelete, optimalProduction } = typedData
 
   // Helper to get status color classes
   const getStatusColor = (status: string) => {
@@ -87,7 +88,7 @@ export const RecipeNode = memo(({ data, id }: NodeProps<RecipeNodeData>) => {
   return (
     <>
       <NodeToolbar
-        isVisible={data.selected}
+        isVisible={typedData.selected}
         position={Position.Top}
         offset={10}
         className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"
@@ -107,26 +108,24 @@ export const RecipeNode = memo(({ data, id }: NodeProps<RecipeNodeData>) => {
       <Card className="min-w-[280px] shadow-lg border-2 relative">
         {/* Production Indicator Badge */}
         {optimalProduction && optimalProduction.status !== "disconnected" && (
-          <TooltipProvider>
-            <Tooltip delayDuration={500}>
-              <TooltipTrigger asChild>
-                <div className="absolute -top-2 -right-2 z-10">
-                  {optimalProduction.status === "cycle" ? (
-                    <Badge className={getStatusColor("cycle")} variant="default">
-                      <AlertTriangle className="w-3 h-3" />
-                    </Badge>
-                  ) : (
-                    <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
-                      {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
-                    </Badge>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
-                {getTooltipContent()}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip delayDuration={500}>
+            <TooltipTrigger asChild>
+              <div className="absolute -top-2 -right-2 z-10">
+                {optimalProduction.status === "cycle" ? (
+                  <Badge className={getStatusColor("cycle")} variant="default">
+                    <AlertTriangle className="w-3 h-3" />
+                  </Badge>
+                ) : (
+                  <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
+                    {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
+                  </Badge>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
+              {getTooltipContent()}
+            </TooltipContent>
+          </Tooltip>
         )}
 
         <div className="p-4 space-y-3">

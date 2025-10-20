@@ -16,6 +16,7 @@ export interface RecipeNodeData {
   selected?: boolean
   onDelete?: (nodeId: string) => void
   optimalProduction?: OptimalProductionData
+  [key: string]: unknown
 }
 
 export type ProductionStatus = "optimal" | "excess" | "deficit" | "disconnected" | "cycle"

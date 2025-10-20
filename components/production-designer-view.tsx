@@ -18,6 +18,7 @@ import {
   type ColorMode,
   type OnConnectEnd,
   type OnConnectStart,
+  BackgroundVariant,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Card } from "@/components/ui/card"
@@ -50,6 +51,7 @@ import {
 } from "@/lib/slot-storage"
 import { toast } from "sonner"
 import { calculateOptimalProduction } from "@/lib/optimal-production-calculator"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 interface ProductionDesignerViewProps {
   recipes: CraftRecipe[]
@@ -303,10 +305,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       console.log("[v0] Layout calculation complete")
       console.log(
         "[v0] Layouted node positions:",
-        layoutedNodes.map((n) => ({ name: n.data.recipe.name, x: n.position.x, y: n.position.y })),
+        layoutedNodes.map((n) => ({ name: (n.data as RecipeNodeData).recipe.name, x: n.position.x, y: n.position.y })),
       )
 
-      setNodes(layoutedNodes)
+      setNodes(layoutedNodes as Node<RecipeNodeData>[])
       setEdges(layoutedEdges)
 
       console.log("[v0] State updated, fitting view")
@@ -930,7 +932,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         fitView
         className="h-full w-full"
       >
-        <Background variant="dots" gap={16} size={1} className="opacity-40 dark:opacity-20" />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} className="opacity-40 dark:opacity-20" />
         <Controls />
         <MiniMap
           nodeColor={(node) => {
@@ -1027,8 +1029,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
 export function ProductionDesignerView({ recipes }: ProductionDesignerViewProps) {
   return (
-    <ReactFlowProvider>
-      <ProductionDesignerFlow recipes={recipes} />
-    </ReactFlowProvider>
+    <TooltipProvider>
+      <ReactFlowProvider>
+        <ProductionDesignerFlow recipes={recipes} />
+      </ReactFlowProvider>
+    </TooltipProvider>
   )
 }
