@@ -24,7 +24,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles } from "lucide-react"
+import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen } from "lucide-react"
 import type { CraftRecipe, RecipeNodeData } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
 import { useTheme } from "@/lib/theme-provider"
@@ -173,8 +173,9 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isAutoBuilding, setIsAutoBuilding] = useState(false)
+  const [rfInstance, setRfInstance] = useState<any>(null)
   const { theme } = useTheme()
-  const { screenToFlowPosition, fitView, deleteElements } = useReactFlow()
+  const { screenToFlowPosition, fitView, deleteElements, setViewport } = useReactFlow()
   const connectionState = useRef<ConnectionState>({
     nodeId: null,
     handleId: null,
@@ -474,6 +475,28 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     setEdges([])
   }, [setNodes, setEdges])
 
+  const onSave = useCallback(() => {
+    if (rfInstance) {
+      const flow = rfInstance.toObject()
+      localStorage.setItem("lrl-designer-flow", JSON.stringify(flow))
+    }
+  }, [rfInstance])
+
+  const onRestore = useCallback(() => {
+    const restoreFlow = async () => {
+      const flow = JSON.parse(localStorage.getItem("lrl-designer-flow") || "null")
+
+      if (flow) {
+        const { x = 0, y = 0, zoom = 1 } = flow.viewport || {}
+        setNodes(flow.nodes || [])
+        setEdges(flow.edges || [])
+        setViewport({ x, y, zoom })
+      }
+    }
+
+    restoreFlow()
+  }, [setNodes, setEdges, setViewport])
+
   const deleteNode = useCallback(
     (nodeId: string) => {
       deleteElements({ nodes: [{ id: nodeId }] })
@@ -728,6 +751,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        onInit={setRfInstance}
         nodeTypes={nodeTypes}
         colorMode={theme as ColorMode}
         fitView
@@ -749,6 +773,14 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
           <Button variant="secondary" size="sm" onClick={() => onLayout("horizontal")} className="gap-2">
             <ArrowRightToLine className="w-4 h-4" />
             Auto Layout
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onRestore} className="gap-2">
+            <FolderOpen className="w-4 h-4" />
+            Restore
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onSave} className="gap-2">
+            <Save className="w-4 h-4" />
+            Save
           </Button>
           <Button variant="destructive" size="sm" onClick={clearCanvas} className="gap-2">
             <Trash2 className="w-4 h-4" />
