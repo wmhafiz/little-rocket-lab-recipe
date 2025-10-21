@@ -15,7 +15,7 @@ import Image from "next/image"
  */
 export const ResourceIconNode = memo(({ data, id }: NodeProps) => {
     const typedData = data as RecipeNodeData
-    const { recipe, onDelete, optimalProduction } = typedData
+    const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
 
     // Helper to get status color classes
     const getStatusColor = (status: string) => {

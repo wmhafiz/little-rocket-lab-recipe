@@ -12,6 +12,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useViewport,
   type Connection,
   type Edge,
   type Node,
@@ -25,8 +26,8 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu } from "lucide-react"
-import type { CraftRecipe, RecipeNodeData, OptimalProductionMap } from "@/lib/types"
+import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu, Settings } from "lucide-react"
+import type { CraftRecipe, RecipeNodeData, OptimalProductionMap, DesignerSettings } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
 import { ResourceIconNode } from "./resource-icon-node"
 import { MachineryIconNode } from "./machinery-icon-node"
@@ -52,6 +53,8 @@ import {
 import { toast } from "sonner"
 import { calculateOptimalProduction } from "@/lib/optimal-production-calculator"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { SettingsDialog } from "./settings-dialog"
+import { loadSettings, saveSettings } from "@/lib/settings-storage"
 
 interface ProductionDesignerViewProps {
   recipes: CraftRecipe[]
@@ -85,17 +88,17 @@ const categorizeRecipes = (recipes: CraftRecipe[]) => {
 }
 
 /**
- * Determine the appropriate node type based on recipe type
- * - Resource nodes: output-only icon nodes (raw materials)
- * - Machinery nodes: input-only icon nodes (end products)
+ * Determine the appropriate node type based on recipe type and settings
+ * - Resource nodes: icon nodes if enabled, otherwise full card
+ * - Machinery nodes: icon nodes if enabled, otherwise full card
  * - Other nodes: full card display (components, materials, repair)
  */
-const getNodeTypeForRecipe = (recipe: CraftRecipe): string => {
+const getNodeTypeForRecipe = (recipe: CraftRecipe, settings: DesignerSettings): string => {
   if (recipe.type === "Resource") {
-    return "resourceIconNode"
+    return settings.showResourceIconNodes ? "resourceIconNode" : "recipeNode"
   }
   if (recipe.type === "Machinery") {
-    return "machineryIconNode"
+    return settings.showMachineryIconNodes ? "machineryIconNode" : "recipeNode"
   }
   return "recipeNode"
 }
@@ -230,9 +233,12 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const [showSaveAsDialog, setShowSaveAsDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
+  const [settings, setSettings] = useState<DesignerSettings>(loadSettings())
   const [optimalProduction, setOptimalProduction] = useState<OptimalProductionMap>(new Map())
   const { theme } = useTheme()
   const { screenToFlowPosition, fitView, deleteElements, setViewport } = useReactFlow()
+  const viewport = useViewport()
   const connectionState = useRef<ConnectionState>({
     nodeId: null,
     handleId: null,
@@ -252,6 +258,25 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     const calculations = calculateOptimalProduction(nodes, edges, recipes)
     setOptimalProduction(calculations)
   }, [nodes, edges, recipes])
+
+  // Determine if icon-only mode should be active based on zoom and settings
+  const iconOnlyMode = useMemo(() => {
+    return settings.autoIconOnlyMode && viewport.zoom < settings.iconOnlyZoomThreshold
+  }, [settings.autoIconOnlyMode, settings.iconOnlyZoomThreshold, viewport.zoom])
+
+  // Update nodes when settings change to apply new node types
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        type: getNodeTypeForRecipe(node.data.recipe, settings),
+        data: {
+          ...node.data,
+          iconOnlyMode,
+        },
+      }))
+    )
+  }, [settings, iconOnlyMode, setNodes])
 
   const existingRecipeNames = useMemo(() => {
     return new Set(nodes.map((node) => node.data.recipe.name))
@@ -388,9 +413,9 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
               const newNode: Node<RecipeNodeData> = {
                 id: newNodeId,
-                type: getNodeTypeForRecipe(recipe),
+                type: getNodeTypeForRecipe(recipe, settings),
                 position,
-                data: { recipe, label: recipe.name },
+                data: { recipe, label: recipe.name, iconOnlyMode },
               }
 
               setNodes((nds) => [...nds, newNode])
@@ -432,9 +457,9 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
               const newNode: Node<RecipeNodeData> = {
                 id: newNodeId,
-                type: getNodeTypeForRecipe(recipe),
+                type: getNodeTypeForRecipe(recipe, settings),
                 position,
-                data: { recipe, label: recipe.name },
+                data: { recipe, label: recipe.name, iconOnlyMode },
               }
 
               setNodes((nds) => [...nds, newNode])
@@ -524,7 +549,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       const newNode: Node<RecipeNodeData> = {
         id: `${recipe.name}-${Date.now()}`,
-        type: getNodeTypeForRecipe(recipe),
+        type: getNodeTypeForRecipe(recipe, settings),
         position: {
           x: Math.random() * 400 + 100,
           y: Math.random() * 400 + 100,
@@ -532,6 +557,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         data: {
           recipe,
           label: recipe.name,
+          iconOnlyMode,
           onDelete: () => { },
         },
       }
@@ -753,12 +779,12 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
             const newNodeId = `${producerRecipe.name}-${Date.now()}-${Math.random()}`
             const newNode: Node<RecipeNodeData> = {
               id: newNodeId,
-              type: getNodeTypeForRecipe(producerRecipe),
+              type: getNodeTypeForRecipe(producerRecipe, settings),
               position: {
                 x: currentNode.position.x - 350,
                 y: currentNode.position.y + (ingredientIndex - recipe.ingredients.length / 2) * 250,
               },
-              data: { recipe: producerRecipe, label: producerRecipe.name },
+              data: { recipe: producerRecipe, label: producerRecipe.name, iconOnlyMode },
             }
 
             newNodesToAdd.push(newNode)
@@ -972,6 +998,15 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
               Clear Canvas
             </Button>
             <ThemeToggle />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowSettingsDialog(true)}
+              className="rounded-full bg-transparent"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Mobile hamburger menu button - visible on mobile only */}
@@ -1010,6 +1045,19 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         onDelete={handleDeleteSlot}
       />
 
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={showSettingsDialog}
+        onOpenChange={setShowSettingsDialog}
+        settings={settings}
+        onSave={(newSettings) => {
+          setSettings(newSettings)
+          saveSettings(newSettings)
+          toast.success("Settings saved")
+        }}
+        currentZoom={viewport.zoom}
+      />
+
       {/* Mobile Menu */}
       <MobileMenuSheet
         open={showMobileMenu}
@@ -1021,6 +1069,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         onSaveAs={() => setShowSaveAsDialog(true)}
         onLoad={() => setShowLoadDialog(true)}
         onClearCanvas={clearCanvas}
+        onSettings={() => setShowSettingsDialog(true)}
         isAutoBuilding={isAutoBuilding}
       />
     </div>

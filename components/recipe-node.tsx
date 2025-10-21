@@ -12,7 +12,7 @@ import Image from "next/image"
 
 export const RecipeNode = memo(({ data, id }: NodeProps) => {
   const typedData = data as RecipeNodeData
-  const { recipe, onDelete, optimalProduction } = typedData
+  const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
 
   // Helper to get status color classes
   const getStatusColor = (status: string) => {
@@ -85,6 +85,107 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
     return lines.join("\n")
   }
 
+  // Icon-only mode rendering
+  if (iconOnlyMode) {
+    return (
+      <>
+        <NodeToolbar
+          isVisible={typedData.selected}
+          position={Position.Top}
+          offset={10}
+          className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete?.(id)}
+            className="h-8 gap-2 hover:bg-destructive hover:text-destructive-foreground"
+            title="Delete node"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete
+          </Button>
+        </NodeToolbar>
+
+        <Tooltip delayDuration={500}>
+          <TooltipTrigger asChild>
+            <div
+              className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+            >
+              {/* Recipe Icon */}
+              <div className="absolute inset-2">
+                <Image
+                  src={recipe.icon || "/placeholder.svg"}
+                  alt={recipe.name}
+                  fill
+                  className="object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                  }}
+                />
+              </div>
+
+              {/* Badge with output rate */}
+              {recipe.outputPerMin && recipe.outputPerMin !== "N/A" && (
+                <div className="absolute -top-1 -right-1 z-10">
+                  <Badge className="text-[10px] px-1 py-0 h-4 bg-primary text-primary-foreground">
+                    {recipe.outputPerMin}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Input Handles */}
+              {recipe.ingredients.map((ingredient, idx) => {
+                const ingredientCount = recipe.ingredients.length
+                const nodeHeight = 64
+                const handleSpacing = ingredientCount > 0 ? nodeHeight / (ingredientCount + 1) : nodeHeight / 2
+                return (
+                  <Handle
+                    key={`input-${idx}`}
+                    type="target"
+                    position={Position.Left}
+                    id={`input-${idx}`}
+                    className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card"
+                    style={{ top: `${handleSpacing * (idx + 1)}px` }}
+                  />
+                )
+              })}
+
+              {/* Output Handle */}
+              <Handle
+                type="source"
+                position={Position.Right}
+                id="output"
+                className="!w-3 !h-3 !bg-accent !border-2 !border-background dark:!border-card !top-1/2 !-translate-y-1/2"
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs">
+            <div className="space-y-1">
+              <div className="font-semibold">{recipe.name}</div>
+              <div className="text-muted-foreground">{recipe.type}</div>
+              {recipe.ingredients.length > 0 && (
+                <>
+                  <div className="text-xs font-medium mt-2">Inputs:</div>
+                  {recipe.ingredients.map((ing, idx) => (
+                    <div key={idx} className="text-xs">
+                      • {ing.item} × {ing.quantity} ({ing.quantityPerMin}/min)
+                    </div>
+                  ))}
+                </>
+              )}
+              <div className="text-xs font-medium mt-2">Output:</div>
+              <div className="text-xs">
+                {recipe.name} ({recipe.outputPerMin}/min)
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </>
+    )
+  }
+
+  // Full card mode rendering
   return (
     <>
       <NodeToolbar

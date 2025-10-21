@@ -16,6 +16,7 @@ export interface RecipeNodeData {
   selected?: boolean
   onDelete?: (nodeId: string) => void
   optimalProduction?: OptimalProductionData
+  iconOnlyMode?: boolean
   [key: string]: unknown
 }
 
@@ -32,3 +33,10 @@ export interface OptimalProductionData {
 }
 
 export type OptimalProductionMap = Map<string, OptimalProductionData>
+
+export interface DesignerSettings {
+  showResourceIconNodes: boolean
+  showMachineryIconNodes: boolean
+  autoIconOnlyMode: boolean
+  iconOnlyZoomThreshold: number
+}

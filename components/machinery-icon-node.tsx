@@ -13,7 +13,7 @@ import Image from "next/image"
  */
 export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
     const typedData = data as RecipeNodeData
-    const { recipe, onDelete } = typedData
+    const { recipe, onDelete, iconOnlyMode } = typedData
     const ingredientCount = recipe.ingredients.length
 
     // Calculate vertical spacing for input handles
