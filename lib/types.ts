@@ -1,13 +1,15 @@
+export interface Ingredient {
+  item: string
+  quantity: string
+  quantityPerMin: string
+}
+
 export interface CraftRecipe {
   type: string
   name: string
   outputPerMin: string
   icon: string
-  ingredients: Array<{
-    item: string
-    quantity: string
-    quantityPerMin: string
-  }>
+  ingredients: Ingredient[]
 }
 
 export interface RecipeNodeData {

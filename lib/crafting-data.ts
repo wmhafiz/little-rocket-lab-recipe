@@ -542,14 +542,20 @@ const CRAFTING_RECIPES: CraftRecipe[] = [
     name: "Copper Bar",
     outputPerMin: "45",
     icon: "/recipes/Copper Bar.png",
-    ingredients: [{ item: "Copper Ore", quantity: "1", quantityPerMin: "45" }],
+    ingredients: [
+      { item: "Copper Ore", quantity: "1", quantityPerMin: "45" },
+      { item: "Coal", quantity: "1", quantityPerMin: "1" },
+    ],
   },
   {
     type: "Component",
     name: "Iron Bar",
     outputPerMin: "45",
     icon: "/recipes/Iron Bar.png",
-    ingredients: [{ item: "Iron Ore", quantity: "1", quantityPerMin: "45" }],
+    ingredients: [
+      { item: "Iron Ore", quantity: "1", quantityPerMin: "45" },
+      { item: "Coal", quantity: "1", quantityPerMin: "1" },
+    ],
   },
   // Materials
   {
@@ -568,8 +574,7 @@ const CRAFTING_RECIPES: CraftRecipe[] = [
     outputPerMin: "10",
     icon: "/recipes/Plastic Scraps.png",
     ingredients: [
-      { item: "Computer Tower", quantity: "1", quantityPerMin: "10" },
-      { item: "Computer Monitor", quantity: "1", quantityPerMin: "10" },
+      { item: "E-Waste", quantity: "1", quantityPerMin: "10" },
     ],
   },
   // Repair
@@ -638,16 +643,9 @@ const CRAFTING_RECIPES: CraftRecipe[] = [
   },
   {
     type: "Resource",
-    name: "Computer Tower",
+    name: "E-Waste",
     outputPerMin: "N/A",
-    icon: "/recipes/Computer Tower.png",
-    ingredients: [],
-  },
-  {
-    type: "Resource",
-    name: "Computer Monitor",
-    outputPerMin: "N/A",
-    icon: "/recipes/Computer Monitor.png",
+    icon: "/recipes/E-Waste.png",
     ingredients: [],
   },
 ]

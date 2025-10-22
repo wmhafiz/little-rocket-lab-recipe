@@ -110,20 +110,47 @@ export const ResourceIconNode = memo(({ data, id }: NodeProps) => {
 
             <div
                 className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-                title={`${recipe.name}${recipe.outputPerMin !== "N/A" ? ` (${recipe.outputPerMin}/min)` : ""}`}
+                title={`${recipe.name}${recipe.outputPerMin !== "N/A" ? ` (${recipe.outputPerMin}/min)` : ""}${recipe.name === "E-Waste" ? "\n(Computer Tower + Computer Monitor)" : ""}`}
             >
-                {/* Resource Icon */}
-                <div className="absolute inset-2">
-                    <Image
-                        src={recipe.icon || "/placeholder.svg"}
-                        alt={recipe.name}
-                        fill
-                        className="object-contain"
-                        onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                        }}
-                    />
-                </div>
+                {/* Resource Icon - Special handling for E-Waste to show both icons */}
+                {recipe.name === "E-Waste" ? (
+                    <>
+                        <div className="absolute inset-2 left-2 right-8">
+                            <Image
+                                src="/recipes/Computer Tower.png"
+                                alt="Computer Tower"
+                                fill
+                                className="object-contain"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none"
+                                }}
+                            />
+                        </div>
+                        <div className="absolute inset-2 left-8 right-2">
+                            <Image
+                                src="/recipes/Computer Monitor.png"
+                                alt="Computer Monitor"
+                                fill
+                                className="object-contain"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none"
+                                }}
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <div className="absolute inset-2">
+                        <Image
+                            src={recipe.icon || "/placeholder.svg"}
+                            alt={recipe.name}
+                            fill
+                            className="object-contain"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none"
+                            }}
+                        />
+                    </div>
+                )}
 
                 {/* Production Indicator Badge */}
                 {optimalProduction && optimalProduction.status !== "disconnected" && (

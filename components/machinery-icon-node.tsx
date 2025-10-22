@@ -3,7 +3,9 @@
 import { memo } from "react"
 import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
 import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Trash2, AlertTriangle } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
 
@@ -13,12 +15,75 @@ import Image from "next/image"
  */
 export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
     const typedData = data as RecipeNodeData
-    const { recipe, onDelete, iconOnlyMode } = typedData
+    const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
     const ingredientCount = recipe.ingredients.length
 
     // Calculate vertical spacing for input handles
     const nodeHeight = 64 // 16 * 4 (w-16 h-16)
     const handleSpacing = ingredientCount > 0 ? nodeHeight / (ingredientCount + 1) : nodeHeight / 2
+
+    // Helper to get status color classes
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case "optimal":
+                return "bg-green-500 text-white hover:bg-green-600"
+            case "deficit":
+                return "bg-red-500 text-white hover:bg-red-600"
+            case "excess":
+                return "bg-yellow-500 text-white hover:bg-yellow-600"
+            case "cycle":
+                return "bg-orange-500 text-white hover:bg-orange-600"
+            default:
+                return "bg-gray-500 text-white hover:bg-gray-600"
+        }
+    }
+
+    // Calculate number of machines needed based on consumption
+    const calculateMachinesNeeded = () => {
+        if (!optimalProduction || optimalProduction.status === "disconnected") {
+            return null
+        }
+
+        // For machinery, we need to calculate based on input consumption rate
+        // Find the highest consumption rate among all ingredients
+        let maxConsumptionRate = 0
+        recipe.ingredients.forEach(ingredient => {
+            const rate = parseFloat(ingredient.quantityPerMin)
+            if (!isNaN(rate) && rate > maxConsumptionRate) {
+                maxConsumptionRate = rate
+            }
+        })
+
+        if (maxConsumptionRate <= 0) {
+            return null
+        }
+
+        return Math.ceil(optimalProduction.requiredPerMin / maxConsumptionRate)
+    }
+
+    // Format tooltip content
+    const getTooltipContent = () => {
+        if (!optimalProduction) return ""
+
+        const machinesNeeded = calculateMachinesNeeded()
+        const consumers = optimalProduction.consumers || []
+
+        let content = `${recipe.name}\n\n`
+        content += `Required: ${optimalProduction.requiredPerMin.toFixed(1)}/min\n`
+
+        if (machinesNeeded) {
+            content += `Machines needed: ${machinesNeeded}\n`
+        }
+
+        if (consumers.length > 0) {
+            content += `\nSupplied by:\n`
+            consumers.forEach(consumer => {
+                content += `  • ${consumer.nodeName}: ${consumer.requiredAmount.toFixed(1)}/min\n`
+            })
+        }
+
+        return content
+    }
 
     return (
         <>
@@ -40,34 +105,58 @@ export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
                 </Button>
             </NodeToolbar>
 
-            <div
-                className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-                title={`${recipe.name}${recipe.ingredients.length > 0 ? `\nInputs: ${recipe.ingredients.map(i => i.item).join(", ")}` : ""}`}
-            >
-                {/* Machinery Icon */}
-                <div className="absolute inset-2">
-                    <Image
-                        src={recipe.icon || "/placeholder.svg"}
-                        alt={recipe.name}
-                        fill
-                        className="object-contain"
-                        onError={(e) => {
-                            e.currentTarget.style.display = "none"
-                        }}
-                    />
-                </div>
+            <div className="relative">
+                {/* Production Indicator Badge */}
+                {optimalProduction && optimalProduction.status !== "disconnected" && (
+                    <Tooltip delayDuration={500}>
+                        <TooltipTrigger asChild>
+                            <div className="absolute -top-2 -right-2 z-10">
+                                {optimalProduction.status === "cycle" ? (
+                                    <Badge className={getStatusColor("cycle")} variant="default">
+                                        <AlertTriangle className="w-3 h-3" />
+                                    </Badge>
+                                ) : (
+                                    <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
+                                        {calculateMachinesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
+                                    </Badge>
+                                )}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
+                            {getTooltipContent()}
+                        </TooltipContent>
+                    </Tooltip>
+                )}
 
-                {/* Input Handles (left side, distributed vertically) */}
-                {recipe.ingredients.map((ingredient, index) => (
-                    <Handle
-                        key={`input-${index}`}
-                        type="target"
-                        position={Position.Left}
-                        id={`input-${index}`}
-                        style={{ top: `${handleSpacing * (index + 1)}px` }}
-                        className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card"
-                    />
-                ))}
+                <div
+                    className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+                    title={`${recipe.name}${recipe.ingredients.length > 0 ? `\nInputs: ${recipe.ingredients.map(i => i.item).join(", ")}` : ""}`}
+                >
+                    {/* Machinery Icon */}
+                    <div className="absolute inset-2">
+                        <Image
+                            src={recipe.icon || "/placeholder.svg"}
+                            alt={recipe.name}
+                            fill
+                            className="object-contain"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none"
+                            }}
+                        />
+                    </div>
+
+                    {/* Input Handles (left side, distributed vertically) */}
+                    {recipe.ingredients.map((ingredient, index) => (
+                        <Handle
+                            key={`input-${index}`}
+                            type="target"
+                            position={Position.Left}
+                            id={`input-${index}`}
+                            style={{ top: `${handleSpacing * (index + 1)}px` }}
+                            className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card"
+                        />
+                    ))}
+                </div>
             </div>
         </>
     )

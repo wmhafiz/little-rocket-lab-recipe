@@ -112,18 +112,45 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
             <div
               className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
             >
-              {/* Recipe Icon */}
-              <div className="absolute inset-2">
-                <Image
-                  src={recipe.icon || "/placeholder.svg"}
-                  alt={recipe.name}
-                  fill
-                  className="object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none"
-                  }}
-                />
-              </div>
+              {/* Recipe Icon - Special handling for E-Waste to show both icons */}
+              {recipe.name === "E-Waste" ? (
+                <>
+                  <div className="absolute inset-2 left-2 right-8">
+                    <Image
+                      src="/recipes/Computer Tower.png"
+                      alt="Computer Tower"
+                      fill
+                      className="object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  </div>
+                  <div className="absolute inset-2 left-8 right-2">
+                    <Image
+                      src="/recipes/Computer Monitor.png"
+                      alt="Computer Monitor"
+                      fill
+                      className="object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-2">
+                  <Image
+                    src={recipe.icon || "/placeholder.svg"}
+                    alt={recipe.name}
+                    fill
+                    className="object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none"
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Badge with output rate */}
               {recipe.outputPerMin && recipe.outputPerMin !== "N/A" && (
@@ -232,15 +259,43 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 shrink-0 rounded-md overflow-hidden bg-secondary/50">
-              <Image
-                src={recipe.icon || "/placeholder.svg"}
-                alt={recipe.name}
-                fill
-                className="object-contain p-1"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none"
-                }}
-              />
+              {/* Special handling for E-Waste to show both icons */}
+              {recipe.name === "E-Waste" ? (
+                <>
+                  <div className="absolute inset-0 left-0 right-1/2">
+                    <Image
+                      src="/recipes/Computer Tower.png"
+                      alt="Computer Tower"
+                      fill
+                      className="object-contain p-0.5"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  </div>
+                  <div className="absolute inset-0 left-1/2 right-0">
+                    <Image
+                      src="/recipes/Computer Monitor.png"
+                      alt="Computer Monitor"
+                      fill
+                      className="object-contain p-0.5"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none"
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <Image
+                  src={recipe.icon || "/placeholder.svg"}
+                  alt={recipe.name}
+                  fill
+                  className="object-contain p-1"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                  }}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-sm text-balance leading-tight">{recipe.name}</h3>

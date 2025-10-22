@@ -5,7 +5,7 @@ const SETTINGS_KEY = "lrl-designer-settings"
 const DEFAULT_SETTINGS: DesignerSettings = {
     showResourceIconNodes: true,
     showMachineryIconNodes: true,
-    autoIconOnlyMode: false,
+    autoIconOnlyMode: true,
     iconOnlyZoomThreshold: 0.75,
 }
 
