@@ -106,27 +106,32 @@ export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
             </NodeToolbar>
 
             <div className="relative">
-                {/* Production Indicator Badge */}
-                {optimalProduction && optimalProduction.status !== "disconnected" && (
-                    <Tooltip delayDuration={500}>
-                        <TooltipTrigger asChild>
-                            <div className="absolute -top-2 -right-2 z-10">
-                                {optimalProduction.status === "cycle" ? (
-                                    <Badge className={getStatusColor("cycle")} variant="default">
-                                        <AlertTriangle className="w-3 h-3" />
-                                    </Badge>
-                                ) : (
-                                    <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
-                                        {calculateMachinesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
-                                    </Badge>
-                                )}
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
-                            {getTooltipContent()}
-                        </TooltipContent>
-                    </Tooltip>
-                )}
+                {/* Production Indicator Badge - Always show for machinery */}
+                <Tooltip delayDuration={500}>
+                    <TooltipTrigger asChild>
+                        <div className="absolute -top-2 -right-2 z-10">
+                            {optimalProduction?.status === "cycle" ? (
+                                <Badge className={getStatusColor("cycle")} variant="default">
+                                    <AlertTriangle className="w-3 h-3" />
+                                </Badge>
+                            ) : optimalProduction && optimalProduction.status !== "disconnected" ? (
+                                <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
+                                    {calculateMachinesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
+                                </Badge>
+                            ) : (
+                                <Badge className="bg-gray-500 text-white text-xs px-2 py-0.5 font-semibold" variant="default">
+                                    1
+                                </Badge>
+                            )}
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
+                        {optimalProduction && optimalProduction.status !== "disconnected"
+                            ? getTooltipContent()
+                            : `${recipe.name}\n\nMachinery (end product)\nNo production requirements`
+                        }
+                    </TooltipContent>
+                </Tooltip>
 
                 <div
                     className="relative w-16 h-16 rounded-lg border-2 border-border bg-background shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer"

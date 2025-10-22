@@ -152,12 +152,22 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
                 </div>
               )}
 
-              {/* Badge with output rate */}
-              {recipe.outputPerMin && recipe.outputPerMin !== "N/A" && (
+              {/* Production Indicator Badge - Always show for machinery */}
+              {((optimalProduction && optimalProduction.status !== "disconnected") || recipe.type === "Machinery") && (
                 <div className="absolute -top-1 -right-1 z-10">
-                  <Badge className="text-[10px] px-1 py-0 h-4 bg-primary text-primary-foreground">
-                    {recipe.outputPerMin}
-                  </Badge>
+                  {optimalProduction?.status === "cycle" ? (
+                    <Badge className={getStatusColor("cycle")} variant="default">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                    </Badge>
+                  ) : optimalProduction && optimalProduction.status !== "disconnected" ? (
+                    <Badge className={`${getStatusColor(optimalProduction.status)} text-[10px] px-1.5 py-0.5 font-semibold`} variant="default">
+                      {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
+                    </Badge>
+                  ) : recipe.type === "Machinery" ? (
+                    <Badge className="bg-gray-500 text-white text-[10px] px-1.5 py-0.5 font-semibold" variant="default">
+                      1
+                    </Badge>
+                  ) : null}
                 </div>
               )}
 
@@ -234,27 +244,36 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
       </NodeToolbar>
 
       <Card className="min-w-[280px] shadow-lg border-2 relative">
-        {/* Production Indicator Badge */}
-        {optimalProduction && optimalProduction.status !== "disconnected" && (
+        {/* Production Indicator Badge - Always show for machinery */}
+        {(optimalProduction && optimalProduction.status !== "disconnected") || recipe.type === "Machinery" ? (
           <Tooltip delayDuration={500}>
             <TooltipTrigger asChild>
               <div className="absolute -top-2 -right-2 z-10">
-                {optimalProduction.status === "cycle" ? (
+                {optimalProduction?.status === "cycle" ? (
                   <Badge className={getStatusColor("cycle")} variant="default">
                     <AlertTriangle className="w-3 h-3" />
                   </Badge>
-                ) : (
+                ) : optimalProduction && optimalProduction.status !== "disconnected" ? (
                   <Badge className={`${getStatusColor(optimalProduction.status)} text-xs px-2 py-0.5 font-semibold`} variant="default">
                     {calculateNodesNeeded() || optimalProduction.requiredPerMin.toFixed(0)}
                   </Badge>
-                )}
+                ) : recipe.type === "Machinery" ? (
+                  <Badge className="bg-gray-500 text-white text-xs px-2 py-0.5 font-semibold" variant="default">
+                    1
+                  </Badge>
+                ) : null}
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-xs">
-              {getTooltipContent()}
+              {optimalProduction && optimalProduction.status !== "disconnected"
+                ? getTooltipContent()
+                : recipe.type === "Machinery"
+                  ? `${recipe.name}\n\nMachinery (end product)\nNo production requirements`
+                  : ""
+              }
             </TooltipContent>
           </Tooltip>
-        )}
+        ) : null}
 
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-3">
