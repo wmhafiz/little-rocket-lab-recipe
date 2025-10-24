@@ -1,13 +1,31 @@
 "use client"
 
 import { memo } from "react"
-import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
+import { Handle, Position, NodeToolbar, useHandleConnections, type NodeProps } from "@xyflow/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Trash2, AlertTriangle } from "lucide-react"
+import { Trash2, AlertTriangle, Copy } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
+
+// Helper component for input handles with connection status
+const InputHandle = memo(({ handleId }: { handleId: string }) => {
+    const connections = useHandleConnections({ type: "target", id: handleId })
+    const isConnected = connections.length > 0
+
+    return (
+        <Handle
+            type="target"
+            position={Position.Left}
+            id={handleId}
+            className={`!w-3 !h-3 !border-2 !border-background dark:!border-card transition-colors ${isConnected ? "!bg-green-500" : "!bg-red-500"
+                }`}
+        />
+    )
+})
+
+InputHandle.displayName = "InputHandle"
 
 /**
  * MachineryIconNode - Compact icon-only node for machinery (end products)
@@ -15,7 +33,7 @@ import Image from "next/image"
  */
 export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
     const typedData = data as RecipeNodeData
-    const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
+    const { recipe, onDelete, onDuplicate, optimalProduction, iconOnlyMode } = typedData
     const ingredientCount = recipe.ingredients.length
 
     // Calculate vertical spacing for input handles
@@ -96,6 +114,16 @@ export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
                 <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => onDuplicate?.(id)}
+                    className="h-8 gap-2 hover:bg-primary hover:text-primary-foreground"
+                    title="Duplicate node"
+                >
+                    <Copy className="h-4 w-4" />
+                    Duplicate
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => onDelete?.(id)}
                     className="h-8 gap-2 hover:bg-destructive hover:text-destructive-foreground"
                     title="Delete node"
@@ -152,14 +180,12 @@ export const MachineryIconNode = memo(({ data, id }: NodeProps) => {
 
                     {/* Input Handles (left side, distributed vertically) */}
                     {recipe.ingredients.map((ingredient, index) => (
-                        <Handle
+                        <div
                             key={`input-${index}`}
-                            type="target"
-                            position={Position.Left}
-                            id={`input-${index}`}
-                            style={{ top: `${handleSpacing * (index + 1)}px` }}
-                            className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card"
-                        />
+                            style={{ position: 'absolute', left: 0, top: `${handleSpacing * (index + 1)}px` }}
+                        >
+                            <InputHandle handleId={`input-${index}`} />
+                        </div>
                     ))}
                 </div>
             </div>

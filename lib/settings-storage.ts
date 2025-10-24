@@ -7,6 +7,14 @@ const DEFAULT_SETTINGS: DesignerSettings = {
     showMachineryIconNodes: true,
     autoIconOnlyMode: true,
     iconOnlyZoomThreshold: 0.75,
+    useDedicatedProductionLines: true,
+    dedicatedLineConsumers: {
+        gear: true,
+        bearing: true,
+        ironPlate: true,
+        heatsink: true,
+        copperWire: true,
+    },
 }
 
 /**
@@ -35,6 +43,22 @@ function validateSettings(settings: Partial<DesignerSettings>): DesignerSettings
             console.warn(
                 `Invalid iconOnlyZoomThreshold: ${threshold}. Using default: ${DEFAULT_SETTINGS.iconOnlyZoomThreshold}`
             )
+        }
+    }
+
+    // Validate dedicated production lines settings
+    if (typeof settings.useDedicatedProductionLines === "boolean") {
+        validated.useDedicatedProductionLines = settings.useDedicatedProductionLines
+    }
+
+    if (settings.dedicatedLineConsumers && typeof settings.dedicatedLineConsumers === "object") {
+        const consumers = settings.dedicatedLineConsumers as any
+        validated.dedicatedLineConsumers = {
+            gear: typeof consumers.gear === "boolean" ? consumers.gear : DEFAULT_SETTINGS.dedicatedLineConsumers.gear,
+            bearing: typeof consumers.bearing === "boolean" ? consumers.bearing : DEFAULT_SETTINGS.dedicatedLineConsumers.bearing,
+            ironPlate: typeof consumers.ironPlate === "boolean" ? consumers.ironPlate : DEFAULT_SETTINGS.dedicatedLineConsumers.ironPlate,
+            heatsink: typeof consumers.heatsink === "boolean" ? consumers.heatsink : DEFAULT_SETTINGS.dedicatedLineConsumers.heatsink,
+            copperWire: typeof consumers.copperWire === "boolean" ? consumers.copperWire : DEFAULT_SETTINGS.dedicatedLineConsumers.copperWire,
         }
     }
 
