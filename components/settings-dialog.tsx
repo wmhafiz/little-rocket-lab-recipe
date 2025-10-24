@@ -49,11 +49,11 @@ export function SettingsDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Settings</DialogTitle>
                     <DialogDescription>
-                        Configure node display preferences and zoom behavior
+                        Configure node display preferences, zoom behavior, and dedicated production lines
                     </DialogDescription>
                 </DialogHeader>
 
@@ -148,6 +148,126 @@ export function SettingsDialog({
                             <p className="text-xs text-muted-foreground">
                                 Current zoom: {Math.round(currentZoom * 100)}%
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Dedicated Production Lines Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-semibold">Dedicated Production Lines</h3>
+
+                        <div className="flex items-center justify-between space-x-2">
+                            <div className="flex-1 space-y-1">
+                                <Label htmlFor="use-dedicated-lines" className="text-sm font-medium">
+                                    Use Dedicated Production Lines
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    When enabled, auto-build creates separate input chains for each consumer instead of sharing resources
+                                </p>
+                            </div>
+                            <Switch
+                                id="use-dedicated-lines"
+                                checked={localSettings.useDedicatedProductionLines}
+                                onCheckedChange={(checked) =>
+                                    setLocalSettings({ ...localSettings, useDedicatedProductionLines: checked })
+                                }
+                            />
+                        </div>
+
+                        {/* Consumer Type Toggles */}
+                        <div className={`space-y-3 pl-4 ${!localSettings.useDedicatedProductionLines ? "opacity-50" : ""}`}>
+                            <p className="text-xs text-muted-foreground mb-2">
+                                Select which consumer types should have dedicated production lines:
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="consumer-gear" className="text-sm">Gear</Label>
+                                <Switch
+                                    id="consumer-gear"
+                                    checked={localSettings.dedicatedLineConsumers.gear}
+                                    onCheckedChange={(checked) =>
+                                        setLocalSettings({
+                                            ...localSettings,
+                                            dedicatedLineConsumers: {
+                                                ...localSettings.dedicatedLineConsumers,
+                                                gear: checked,
+                                            },
+                                        })
+                                    }
+                                    disabled={!localSettings.useDedicatedProductionLines}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="consumer-bearing" className="text-sm">Bearing</Label>
+                                <Switch
+                                    id="consumer-bearing"
+                                    checked={localSettings.dedicatedLineConsumers.bearing}
+                                    onCheckedChange={(checked) =>
+                                        setLocalSettings({
+                                            ...localSettings,
+                                            dedicatedLineConsumers: {
+                                                ...localSettings.dedicatedLineConsumers,
+                                                bearing: checked,
+                                            },
+                                        })
+                                    }
+                                    disabled={!localSettings.useDedicatedProductionLines}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="consumer-iron-plate" className="text-sm">Iron Plate</Label>
+                                <Switch
+                                    id="consumer-iron-plate"
+                                    checked={localSettings.dedicatedLineConsumers.ironPlate}
+                                    onCheckedChange={(checked) =>
+                                        setLocalSettings({
+                                            ...localSettings,
+                                            dedicatedLineConsumers: {
+                                                ...localSettings.dedicatedLineConsumers,
+                                                ironPlate: checked,
+                                            },
+                                        })
+                                    }
+                                    disabled={!localSettings.useDedicatedProductionLines}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="consumer-heatsink" className="text-sm">Heatsink</Label>
+                                <Switch
+                                    id="consumer-heatsink"
+                                    checked={localSettings.dedicatedLineConsumers.heatsink}
+                                    onCheckedChange={(checked) =>
+                                        setLocalSettings({
+                                            ...localSettings,
+                                            dedicatedLineConsumers: {
+                                                ...localSettings.dedicatedLineConsumers,
+                                                heatsink: checked,
+                                            },
+                                        })
+                                    }
+                                    disabled={!localSettings.useDedicatedProductionLines}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="consumer-copper-wire" className="text-sm">Copper Wire</Label>
+                                <Switch
+                                    id="consumer-copper-wire"
+                                    checked={localSettings.dedicatedLineConsumers.copperWire}
+                                    onCheckedChange={(checked) =>
+                                        setLocalSettings({
+                                            ...localSettings,
+                                            dedicatedLineConsumers: {
+                                                ...localSettings.dedicatedLineConsumers,
+                                                copperWire: checked,
+                                            },
+                                        })
+                                    }
+                                    disabled={!localSettings.useDedicatedProductionLines}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

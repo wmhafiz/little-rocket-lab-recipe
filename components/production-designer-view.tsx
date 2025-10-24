@@ -9,6 +9,7 @@ import {
   MiniMap,
   Panel,
   addEdge,
+  reconnectEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -19,6 +20,7 @@ import {
   type ColorMode,
   type OnConnectEnd,
   type OnConnectStart,
+  type OnReconnect,
   BackgroundVariant,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
@@ -28,9 +30,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu, Settings } from "lucide-react"
 import type { CraftRecipe, RecipeNodeData, OptimalProductionMap, DesignerSettings } from "@/lib/types"
+import { DUPLICATABLE_NODE_TYPES } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
 import { ResourceIconNode } from "./resource-icon-node"
 import { MachineryIconNode } from "./machinery-icon-node"
+import { CustomEdge } from "./custom-edge"
 import { useTheme } from "@/lib/theme-provider"
 import { ThemeToggle } from "./theme-toggle"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +68,10 @@ const nodeTypes = {
   recipeNode: RecipeNode,
   resourceIconNode: ResourceIconNode,
   machineryIconNode: MachineryIconNode,
+}
+
+const edgeTypes = {
+  default: CustomEdge,
 }
 
 interface ConnectionState {
@@ -543,12 +551,15 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   const addRecipeNode = useCallback(
     (recipe: CraftRecipe) => {
-      if (existingRecipeNames.has(recipe.name)) {
+      // Check if duplicates are allowed for this recipe type
+      const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(recipe.name as any)
+
+      if (!isDuplicatable && existingRecipeNames.has(recipe.name)) {
         return
       }
 
       const newNode: Node<RecipeNodeData> = {
-        id: `${recipe.name}-${Date.now()}`,
+        id: `${recipe.name}-${Date.now()}-${Math.random()}`,
         type: getNodeTypeForRecipe(recipe, settings),
         position: {
           x: Math.random() * 400 + 100,
@@ -563,7 +574,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       }
       setNodes((nds) => [...nds, newNode])
     },
-    [setNodes, existingRecipeNames],
+    [setNodes, existingRecipeNames, settings, iconOnlyMode],
   )
 
   const clearCanvas = useCallback(() => {
@@ -704,6 +715,48 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     [deleteElements],
   )
 
+  const duplicateNode = useCallback(
+    (nodeId: string) => {
+      const nodeToDuplicate = nodes.find((n) => n.id === nodeId)
+      if (!nodeToDuplicate) return
+
+      const recipe = nodeToDuplicate.data.recipe
+
+      // Check if this node type can be duplicated
+      const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(recipe.name as any)
+
+      if (!isDuplicatable && existingRecipeNames.has(recipe.name)) {
+        toast.error(`Cannot duplicate ${recipe.name} - only one instance allowed`)
+        return
+      }
+
+      const newNode: Node<RecipeNodeData> = {
+        ...nodeToDuplicate,
+        id: `${recipe.name}-${Date.now()}-${Math.random()}`,
+        position: {
+          x: nodeToDuplicate.position.x + 50,
+          y: nodeToDuplicate.position.y + 50,
+        },
+        data: {
+          ...nodeToDuplicate.data,
+        },
+        selected: true,
+      }
+
+      // Deselect all other nodes and add the new one
+      setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode])
+      toast.success(`Duplicated ${recipe.name}`)
+    },
+    [nodes, existingRecipeNames, setNodes],
+  )
+
+  const onReconnect: OnReconnect = useCallback(
+    (oldEdge, newConnection) => {
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els))
+    },
+    [setEdges],
+  )
+
   const autoBuild = useCallback(() => {
     if (isAutoBuilding) {
       console.log("[v0] Auto Build already running, skipping")
@@ -721,10 +774,23 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     const newEdgesToAdd: Edge[] = []
 
     const allRecipeNames = new Set<string>(nodes.map((n) => n.data.recipe.name))
-    const nodesToProcess: Array<{ node: Node<RecipeNodeData>; depth: number }> = []
+    const nodesToProcess: Array<{ node: Node<RecipeNodeData>; depth: number; requiresDedicated: boolean }> = []
+
+    // Helper to check if a recipe requires dedicated production lines
+    const requiresDedicatedLine = (recipeName: string): boolean => {
+      if (!settings.useDedicatedProductionLines) return false
+
+      const normalizedName = recipeName.toLowerCase().replace(/\s+/g, '')
+      if (normalizedName === 'gear') return settings.dedicatedLineConsumers.gear
+      if (normalizedName === 'bearing') return settings.dedicatedLineConsumers.bearing
+      if (normalizedName === 'ironplate') return settings.dedicatedLineConsumers.ironPlate
+      if (normalizedName === 'heatsink') return settings.dedicatedLineConsumers.heatsink
+      if (normalizedName === 'copperwire') return settings.dedicatedLineConsumers.copperWire
+      return false
+    }
 
     nodes.forEach((node) => {
-      nodesToProcess.push({ node, depth: 0 })
+      nodesToProcess.push({ node, depth: 0, requiresDedicated: requiresDedicatedLine(node.data.recipe.name) })
     })
 
     console.log("[v0] Processing", nodesToProcess.length, "initial nodes")
@@ -736,19 +802,80 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       )
     }
 
+    // Track which producer nodes are claimed by dedicated consumers
+    // Map: producerNodeId -> Set of consumer node IDs that require dedicated lines
+    const dedicatedProducerClaims = new Map<string, Set<string>>()
+
+    // First pass: identify existing connections from producers to dedicated consumers
+    nodes.forEach((node) => {
+      if (requiresDedicatedLine(node.data.recipe.name)) {
+        node.data.recipe.ingredients.forEach((ingredient) => {
+          const material = ingredient.item
+          const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(material as any)
+
+          if (isDuplicatable) {
+            // Find if this node already has a producer connected
+            const producerNode = nodes.find((n) =>
+              n.data.recipe.name === material &&
+              edges.some((e) => e.source === n.id && e.target === node.id)
+            )
+
+            if (producerNode) {
+              if (!dedicatedProducerClaims.has(producerNode.id)) {
+                dedicatedProducerClaims.set(producerNode.id, new Set())
+              }
+              dedicatedProducerClaims.get(producerNode.id)!.add(node.id)
+            }
+          }
+        })
+      }
+    })
+
     while (nodesToProcess.length > 0) {
-      const { node: currentNode, depth } = nodesToProcess.shift()!
+      const { node: currentNode, depth, requiresDedicated } = nodesToProcess.shift()!
       const recipe = currentNode.data.recipe
 
-      console.log("[v0] Processing node:", recipe.name, "with", recipe.ingredients.length, "ingredients")
+      console.log("[v0] Processing node:", recipe.name, "with", recipe.ingredients.length, "ingredients", requiresDedicated ? "(dedicated line)" : "")
 
       recipe.ingredients.forEach((ingredient, ingredientIndex) => {
         const material = ingredient.item
+        const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(material as any)
 
-        const existingProducerNode = findNodeByRecipeName(material)
+        // If this consumer requires dedicated lines and the material is duplicatable, check if we can reuse
+        const shouldCreateDedicated = requiresDedicated && isDuplicatable
+
+        let existingProducerNode: Node<RecipeNodeData> | undefined = undefined
+
+        if (!shouldCreateDedicated) {
+          // Normal case: can reuse any producer
+          existingProducerNode = findNodeByRecipeName(material)
+        } else {
+          // Dedicated case: only reuse if not already claimed by another dedicated consumer
+          const candidates = [
+            ...nodes.filter((n) => n.data.recipe.name === material),
+            ...newNodesToAdd.filter((n) => n.data.recipe.name === material)
+          ]
+
+          existingProducerNode = candidates.find((producer) => {
+            const claims = dedicatedProducerClaims.get(producer.id)
+            // Can reuse if: no claims, or only claimed by this same consumer
+            return !claims || (claims.size === 1 && claims.has(currentNode.id))
+          })
+
+          // If we found a producer, claim it for this consumer
+          if (existingProducerNode) {
+            if (!dedicatedProducerClaims.has(existingProducerNode.id)) {
+              dedicatedProducerClaims.set(existingProducerNode.id, new Set())
+            }
+            dedicatedProducerClaims.get(existingProducerNode.id)!.add(currentNode.id)
+            console.log("[v0] Claiming producer", material, "for dedicated consumer", recipe.name)
+          } else {
+            console.log("[v0] No available producer for", material, "- will create dedicated one for", recipe.name)
+          }
+        }
 
         if (existingProducerNode) {
-          console.log("[v0] Found existing producer for", material, "- creating edge only")
+          console.log("[v0] Found existing producer for", material, "- creating edge only", shouldCreateDedicated ? "(dedicated)" : "")
           const edgeId = `${existingProducerNode.id}-${currentNode.id}-${ingredientIndex}`
           const edgeExists = edges.some((e) => e.id === edgeId) || newEdgesToAdd.some((e) => e.id === edgeId)
 
@@ -763,7 +890,8 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
             })
           }
         } else {
-          if (allRecipeNames.has(material)) {
+          // For non-duplicatable nodes, check if already planned
+          if (!isDuplicatable && allRecipeNames.has(material)) {
             console.log("[v0] Recipe", material, "already planned to be added, skipping")
             return
           }
@@ -772,9 +900,11 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
           if (producingRecipes.length > 0) {
             const producerRecipe = producingRecipes[0]
-            console.log("[v0] Creating new node for", material)
+            console.log("[v0] Creating new node for", material, shouldCreateDedicated ? "(dedicated)" : "")
 
-            allRecipeNames.add(material)
+            if (!isDuplicatable) {
+              allRecipeNames.add(material)
+            }
 
             const newNodeId = `${producerRecipe.name}-${Date.now()}-${Math.random()}`
             const newNode: Node<RecipeNodeData> = {
@@ -789,6 +919,17 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
             newNodesToAdd.push(newNode)
 
+            // If this is a dedicated producer, claim it immediately
+            // Claim if: parent requires dedicated lines OR the material itself is a dedicated consumer
+            const materialIsDedicated = requiresDedicatedLine(material)
+            if (shouldCreateDedicated || materialIsDedicated) {
+              if (!dedicatedProducerClaims.has(newNodeId)) {
+                dedicatedProducerClaims.set(newNodeId, new Set())
+              }
+              dedicatedProducerClaims.get(newNodeId)!.add(currentNode.id)
+              console.log("[v0] Immediately claiming new producer", material, "for dedicated consumer", recipe.name)
+            }
+
             newEdgesToAdd.push({
               id: `${newNodeId}-${currentNode.id}`,
               source: newNodeId,
@@ -798,7 +939,9 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
               animated: true,
             })
 
-            nodesToProcess.push({ node: newNode, depth: depth + 1 })
+            // Check if the newly created node itself requires dedicated lines
+            const newNodeRequiresDedicated = requiresDedicatedLine(producerRecipe.name)
+            nodesToProcess.push({ node: newNode, depth: depth + 1, requiresDedicated: newNodeRequiresDedicated })
           }
         }
       })
@@ -829,10 +972,11 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         ...node.data,
         selected: node.selected,
         onDelete: deleteNode,
+        onDuplicate: duplicateNode,
         optimalProduction: optimalProduction.get(node.id),
       },
     }))
-  }, [nodes, deleteNode, optimalProduction])
+  }, [nodes, deleteNode, duplicateNode, optimalProduction])
 
   return (
     <div className="relative h-screen w-screen">
@@ -952,8 +1096,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        onReconnect={onReconnect}
         onInit={setRfInstance}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         colorMode={theme as ColorMode}
         fitView
         className="h-full w-full"

@@ -5,7 +5,7 @@ import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Trash2, AlertTriangle } from "lucide-react"
+import { Trash2, AlertTriangle, Copy } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
 
@@ -15,7 +15,7 @@ import Image from "next/image"
  */
 export const ResourceIconNode = memo(({ data, id }: NodeProps) => {
     const typedData = data as RecipeNodeData
-    const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
+    const { recipe, onDelete, onDuplicate, optimalProduction, iconOnlyMode } = typedData
 
     // Helper to get status color classes
     const getStatusColor = (status: string) => {
@@ -96,6 +96,16 @@ export const ResourceIconNode = memo(({ data, id }: NodeProps) => {
                 offset={10}
                 className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"
             >
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDuplicate?.(id)}
+                    className="h-8 gap-2 hover:bg-primary hover:text-primary-foreground"
+                    title="Duplicate node"
+                >
+                    <Copy className="h-4 w-4" />
+                    Duplicate
+                </Button>
                 <Button
                     variant="ghost"
                     size="sm"

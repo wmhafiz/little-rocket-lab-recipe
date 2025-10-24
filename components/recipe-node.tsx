@@ -1,18 +1,36 @@
 "use client"
 
 import { memo } from "react"
-import { Handle, Position, NodeToolbar, type NodeProps } from "@xyflow/react"
+import { Handle, Position, NodeToolbar, useHandleConnections, type NodeProps } from "@xyflow/react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Trash2, AlertTriangle } from "lucide-react"
+import { Trash2, AlertTriangle, Copy } from "lucide-react"
 import type { RecipeNodeData } from "@/lib/types"
 import Image from "next/image"
 
+// Helper component for input handles with connection status
+const InputHandle = memo(({ handleId }: { handleId: string }) => {
+  const connections = useHandleConnections({ type: "target", id: handleId })
+  const isConnected = connections.length > 0
+
+  return (
+    <Handle
+      type="target"
+      position={Position.Left}
+      id={handleId}
+      className={`!w-3 !h-3 !border-2 !border-background dark:!border-card transition-colors ${isConnected ? "!bg-green-500" : "!bg-red-500"
+        }`}
+    />
+  )
+})
+
+InputHandle.displayName = "InputHandle"
+
 export const RecipeNode = memo(({ data, id }: NodeProps) => {
   const typedData = data as RecipeNodeData
-  const { recipe, onDelete, optimalProduction, iconOnlyMode } = typedData
+  const { recipe, onDelete, onDuplicate, optimalProduction, iconOnlyMode } = typedData
 
   // Helper to get status color classes
   const getStatusColor = (status: string) => {
@@ -98,6 +116,16 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => onDuplicate?.(id)}
+            className="h-8 gap-2 hover:bg-primary hover:text-primary-foreground"
+            title="Duplicate node"
+          >
+            <Copy className="w-4 h-4" />
+            Duplicate
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onDelete?.(id)}
             className="h-8 gap-2 hover:bg-destructive hover:text-destructive-foreground"
             title="Delete node"
@@ -177,14 +205,12 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
                 const nodeHeight = 64
                 const handleSpacing = ingredientCount > 0 ? nodeHeight / (ingredientCount + 1) : nodeHeight / 2
                 return (
-                  <Handle
+                  <div
                     key={`input-${idx}`}
-                    type="target"
-                    position={Position.Left}
-                    id={`input-${idx}`}
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card"
-                    style={{ top: `${handleSpacing * (idx + 1)}px` }}
-                  />
+                    style={{ position: 'absolute', left: 0, top: `${handleSpacing * (idx + 1)}px` }}
+                  >
+                    <InputHandle handleId={`input-${idx}`} />
+                  </div>
                 )
               })}
 
@@ -231,6 +257,16 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
         offset={10}
         className="flex gap-1 bg-background border border-border rounded-lg shadow-lg p-1"
       >
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDuplicate?.(id)}
+          className="h-8 gap-2 hover:bg-primary hover:text-primary-foreground"
+          title="Duplicate node"
+        >
+          <Copy className="w-4 h-4" />
+          Duplicate
+        </Button>
         <Button
           variant="ghost"
           size="sm"
@@ -329,12 +365,9 @@ export const RecipeNode = memo(({ data, id }: NodeProps) => {
             <div className="space-y-1">
               {recipe.ingredients.map((ingredient, idx) => (
                 <div key={idx} className="relative">
-                  <Handle
-                    type="target"
-                    position={Position.Left}
-                    id={`input-${idx}`}
-                    className="!w-3 !h-3 !bg-primary !border-2 !border-background dark:!border-card !top-1/2 !-translate-y-1/2"
-                  />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                    <InputHandle handleId={`input-${idx}`} />
+                  </div>
                   <div className="flex items-center gap-2 text-xs bg-secondary text-secondary-foreground rounded px-2 py-1 pl-4 font-medium">
                     <div className="relative w-4 h-4 shrink-0">
                       <Image
