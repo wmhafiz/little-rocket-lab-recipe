@@ -25,6 +25,7 @@ interface UIState {
     showSaveAsDialog: boolean
     showLoadDialog: boolean
     showSettingsDialog: boolean
+    showAboutDialog: boolean
 
     // Mobile menu
     showMobileMenu: boolean
@@ -47,6 +48,8 @@ interface UIActions {
     closeLoadDialog: () => void
     openSettingsDialog: () => void
     closeSettingsDialog: () => void
+    openAboutDialog: () => void
+    closeAboutDialog: () => void
 
     // Mobile menu actions
     openMobileMenu: () => void
@@ -66,6 +69,7 @@ export const useUIStore = create<UIStore>()(
             showSaveAsDialog: false,
             showLoadDialog: false,
             showSettingsDialog: false,
+            showAboutDialog: false,
             showMobileMenu: false,
 
             // Search and filter actions
@@ -84,6 +88,8 @@ export const useUIStore = create<UIStore>()(
             closeLoadDialog: () => set({ showLoadDialog: false }),
             openSettingsDialog: () => set({ showSettingsDialog: true }),
             closeSettingsDialog: () => set({ showSettingsDialog: false }),
+            openAboutDialog: () => set({ showAboutDialog: true }),
+            closeAboutDialog: () => set({ showAboutDialog: false }),
 
             // Mobile menu actions
             openMobileMenu: () => set({ showMobileMenu: true }),

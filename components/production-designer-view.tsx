@@ -28,7 +28,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu, Settings } from "lucide-react"
+import { Search, Trash2, ArrowRightToLine, PanelLeftClose, PanelLeft, Sparkles, Save, FolderOpen, FolderPlus, Files, Menu, Settings, Info } from "lucide-react"
 import type { CraftRecipe, RecipeNodeData, OptimalProductionMap, DesignerSettings } from "@/lib/types"
 import { DUPLICATABLE_NODE_TYPES } from "@/lib/types"
 import { RecipeNode } from "./recipe-node"
@@ -46,6 +46,7 @@ import { toast } from "sonner"
 import { calculateOptimalProduction } from "@/lib/optimal-production-calculator"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SettingsDialog } from "./settings-dialog"
+import { AboutDialog } from "./about-dialog"
 import { useSettingsStore, useUIStore, useSlotStore, useFlowStore, useOptimalProductionStore } from "@/lib/stores"
 
 interface ProductionDesignerViewProps {
@@ -239,6 +240,9 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const showSettingsDialog = useUIStore((state) => state.showSettingsDialog)
   const closeSettingsDialog = useUIStore((state) => state.closeSettingsDialog)
   const openSettingsDialog = useUIStore((state) => state.openSettingsDialog)
+  const showAboutDialog = useUIStore((state) => state.showAboutDialog)
+  const closeAboutDialog = useUIStore((state) => state.closeAboutDialog)
+  const openAboutDialog = useUIStore((state) => state.openAboutDialog)
   const showMobileMenu = useUIStore((state) => state.showMobileMenu)
   const closeMobileMenu = useUIStore((state) => state.closeMobileMenu)
   const openMobileMenu = useUIStore((state) => state.openMobileMenu)
@@ -1161,6 +1165,15 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
             >
               <Settings className="h-5 w-5" />
             </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={openAboutDialog}
+              className="rounded-full bg-transparent"
+              aria-label="About"
+            >
+              <Info className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Mobile hamburger menu button - visible on mobile only */}
@@ -1211,6 +1224,12 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         currentZoom={viewport.zoom}
       />
 
+      {/* About Dialog */}
+      <AboutDialog
+        open={showAboutDialog}
+        onOpenChange={closeAboutDialog}
+      />
+
       {/* Mobile Menu */}
       <MobileMenuSheet
         open={showMobileMenu}
@@ -1223,6 +1242,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         onLoad={openLoadDialog}
         onClearCanvas={clearCanvas}
         onSettings={openSettingsDialog}
+        onAbout={openAboutDialog}
         isAutoBuilding={isAutoBuilding}
       />
     </div>

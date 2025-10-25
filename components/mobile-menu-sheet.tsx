@@ -2,7 +2,7 @@
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Sparkles, ArrowRightToLine, FolderOpen, Save, FolderPlus, Files, Trash2, Settings } from "lucide-react"
+import { Sparkles, ArrowRightToLine, FolderOpen, Save, FolderPlus, Files, Trash2, Settings, Info } from "lucide-react"
 import { ThemeToggle } from "./theme-toggle"
 
 export interface MobileMenuSheetProps {
@@ -16,6 +16,7 @@ export interface MobileMenuSheetProps {
     onLoad: () => void
     onClearCanvas: () => void
     onSettings?: () => void
+    onAbout?: () => void
     isAutoBuilding: boolean
 }
 
@@ -30,6 +31,7 @@ export function MobileMenuSheet({
     onLoad,
     onClearCanvas,
     onSettings,
+    onAbout,
     isAutoBuilding,
 }: MobileMenuSheetProps) {
     const handleAction = (action: () => void) => {
@@ -113,6 +115,17 @@ export function MobileMenuSheet({
                         >
                             <Settings className="w-4 h-4" />
                             Settings
+                        </Button>
+                    )}
+
+                    {onAbout && (
+                        <Button
+                            variant="secondary"
+                            className="w-full justify-start gap-2"
+                            onClick={() => handleAction(onAbout)}
+                        >
+                            <Info className="w-4 h-4" />
+                            About
                         </Button>
                     )}
                 </div>

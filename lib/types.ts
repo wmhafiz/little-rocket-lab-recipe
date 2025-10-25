@@ -67,3 +67,15 @@ export const DUPLICATABLE_NODE_TYPES = [
 ] as const
 
 export type DuplicatableNodeType = (typeof DUPLICATABLE_NODE_TYPES)[number]
+
+/**
+ * Release note entry for displaying in the About dialog
+ */
+export interface ReleaseNote {
+  /** Version number (e.g., "1.0.0") */
+  version: string
+  /** Release date in YYYY-MM-DD format */
+  date: string
+  /** User-friendly list of changes and improvements */
+  changes: string[]
+}
