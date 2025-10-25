@@ -15,13 +15,13 @@ import {
   useReactFlow,
   useViewport,
   type Connection,
-  type Edge,
-  type Node,
   type ColorMode,
   type OnConnectEnd,
   type OnConnectStart,
   type OnReconnect,
   BackgroundVariant,
+  type Edge,
+  type Node,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Card } from "@/components/ui/card"
@@ -42,23 +42,11 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { SlotSelectorDialog } from "./slot-selector-dialog"
 import { MobileMenuSheet } from "./mobile-menu-sheet"
-import {
-  migrateOldStorage,
-  getSlotMetadata,
-  saveFlowToSlot,
-  loadFlowFromSlot,
-  deleteSlot,
-  editSlotMetadata,
-  getCurrentActiveSlot,
-  setCurrentActiveSlot,
-  type SlotInfo,
-  type FlowData,
-} from "@/lib/slot-storage"
 import { toast } from "sonner"
 import { calculateOptimalProduction } from "@/lib/optimal-production-calculator"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SettingsDialog } from "./settings-dialog"
-import { loadSettings, saveSettings } from "@/lib/settings-storage"
+import { useSettingsStore, useUIStore, useSlotStore, useFlowStore, useOptimalProductionStore } from "@/lib/stores"
 
 interface ProductionDesignerViewProps {
   recipes: CraftRecipe[]
@@ -231,19 +219,43 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: "horizonta
 function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<RecipeNodeData>>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isPanelOpen, setIsPanelOpen] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isAutoBuilding, setIsAutoBuilding] = useState(false)
-  const [rfInstance, setRfInstance] = useState<any>(null)
-  const [currentSlot, setCurrentSlot] = useState<number>(0)
-  const [slots, setSlots] = useState<SlotInfo[]>([])
-  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false)
-  const [showLoadDialog, setShowLoadDialog] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
-  const [settings, setSettings] = useState<DesignerSettings>(loadSettings())
-  const [optimalProduction, setOptimalProduction] = useState<OptimalProductionMap>(new Map())
+
+  // Zustand stores
+  const settings = useSettingsStore((state) => state.settings)
+  const updateSettings = useSettingsStore((state) => state.updateSettings)
+  const searchTerm = useUIStore((state) => state.searchTerm)
+  const setSearchTerm = useUIStore((state) => state.setSearchTerm)
+  const isPanelOpen = useUIStore((state) => state.isPanelOpen)
+  const setIsPanelOpen = useUIStore((state) => state.setIsPanelOpen)
+  const selectedCategory = useUIStore((state) => state.selectedCategory)
+  const setSelectedCategory = useUIStore((state) => state.setSelectedCategory)
+  const showSaveAsDialog = useUIStore((state) => state.showSaveAsDialog)
+  const closeSaveAsDialog = useUIStore((state) => state.closeSaveAsDialog)
+  const openSaveAsDialog = useUIStore((state) => state.openSaveAsDialog)
+  const showLoadDialog = useUIStore((state) => state.showLoadDialog)
+  const closeLoadDialog = useUIStore((state) => state.closeLoadDialog)
+  const openLoadDialog = useUIStore((state) => state.openLoadDialog)
+  const showSettingsDialog = useUIStore((state) => state.showSettingsDialog)
+  const closeSettingsDialog = useUIStore((state) => state.closeSettingsDialog)
+  const openSettingsDialog = useUIStore((state) => state.openSettingsDialog)
+  const showMobileMenu = useUIStore((state) => state.showMobileMenu)
+  const closeMobileMenu = useUIStore((state) => state.closeMobileMenu)
+  const openMobileMenu = useUIStore((state) => state.openMobileMenu)
+  const rfInstance = useFlowStore((state) => state.rfInstance)
+  const setRfInstance = useFlowStore((state) => state.setRfInstance)
+  const optimalProduction = useOptimalProductionStore((state) => state.optimalProduction)
+  const setOptimalProduction = useOptimalProductionStore((state) => state.setOptimalProduction)
+  const currentSlot = useSlotStore((state) => state.currentSlot)
+  const setCurrentSlot = useSlotStore((state) => state.setCurrentSlot)
+  const slots = useSlotStore((state) => state.slots)
+  const refreshSlots = useSlotStore((state) => state.refreshSlots)
+  const saveFlow = useSlotStore((state) => state.saveFlow)
+  const loadFlow = useSlotStore((state) => state.loadFlow)
+  const deleteSlotFromStore = useSlotStore((state) => state.deleteSlot)
+  const editSlotMetadata = useSlotStore((state) => state.editSlotMetadata)
+  const migrateOldStorage = useSlotStore((state) => state.migrateOldStorage)
+
   const { theme } = useTheme()
   const { screenToFlowPosition, fitView, deleteElements, setViewport } = useReactFlow()
   const viewport = useViewport()
@@ -257,15 +269,14 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   // Run migration and load slot metadata on mount
   useEffect(() => {
     migrateOldStorage()
-    setCurrentSlot(getCurrentActiveSlot())
-    setSlots(getSlotMetadata())
-  }, [])
+    refreshSlots()
+  }, [migrateOldStorage, refreshSlots])
 
   // Calculate optimal production requirements when nodes or edges change
   useEffect(() => {
     const calculations = calculateOptimalProduction(nodes, edges, recipes)
     setOptimalProduction(calculations)
-  }, [nodes, edges, recipes])
+  }, [nodes, edges, recipes, setOptimalProduction])
 
   // Determine if icon-only mode should be active based on zoom and settings
   const iconOnlyMode = useMemo(() => {
@@ -274,8 +285,8 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   // Update nodes when settings change to apply new node types
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
+    setNodes((nds: Node<RecipeNodeData>[]) =>
+      nds.map((node: Node<RecipeNodeData>) => ({
         ...node,
         type: getNodeTypeForRecipe(node.data.recipe, settings),
         data: {
@@ -287,7 +298,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
   }, [settings, iconOnlyMode, setNodes])
 
   const existingRecipeNames = useMemo(() => {
-    return new Set(nodes.map((node) => node.data.recipe.name))
+    return new Set(nodes.map((node: Node<RecipeNodeData>) => node.data.recipe.name))
   }, [nodes])
 
   const categorizedRecipes = useMemo(() => categorizeRecipes(recipes), [recipes])
@@ -308,7 +319,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   const findNodeByRecipeName = useCallback(
     (recipeName: string): Node<RecipeNodeData> | undefined => {
-      return nodes.find((node) => node.data.recipe.name === recipeName)
+      return nodes.find((node: Node<RecipeNodeData>) => node.data.recipe.name === recipeName)
     },
     [nodes],
   )
@@ -355,14 +366,14 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      setEdges((eds) => addEdge({ ...connection, animated: true }, eds))
+      setEdges((eds: Edge[]) => addEdge({ ...connection, animated: true }, eds))
     },
     [setEdges],
   )
 
   const onConnectStart: OnConnectStart = useCallback(
     (_, { nodeId, handleId, handleType }) => {
-      const node = nodes.find((n) => n.id === nodeId)
+      const node = nodes.find((n: Node<RecipeNodeData>) => n.id === nodeId)
       let material: string | null = null
 
       if (node && handleId && handleType) {
@@ -415,7 +426,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 targetHandle: handleId!,
                 animated: true,
               }
-              setEdges((eds) => [...eds, newEdge])
+              setEdges((eds: Edge[]) => [...eds, newEdge])
             } else {
               const newNodeId = `${recipe.name}-${Date.now()}`
 
@@ -426,7 +437,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 data: { recipe, label: recipe.name, iconOnlyMode },
               }
 
-              setNodes((nds) => [...nds, newNode])
+              setNodes((nds: Node<RecipeNodeData>[]) => [...nds, newNode])
 
               const newEdge: Edge = {
                 id: `${newNodeId}-${nodeId}`,
@@ -437,7 +448,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 animated: true,
               }
 
-              setEdges((eds) => [...eds, newEdge])
+              setEdges((eds: Edge[]) => [...eds, newEdge])
             }
           }
         } else if (handleType === "source") {
@@ -459,7 +470,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 targetHandle,
                 animated: true,
               }
-              setEdges((eds) => [...eds, newEdge])
+              setEdges((eds: Edge[]) => [...eds, newEdge])
             } else {
               const newNodeId = `${recipe.name}-${Date.now()}-${Math.random()}`
 
@@ -470,7 +481,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 data: { recipe, label: recipe.name, iconOnlyMode },
               }
 
-              setNodes((nds) => [...nds, newNode])
+              setNodes((nds: Node<RecipeNodeData>[]) => [...nds, newNode])
 
               const newEdge: Edge = {
                 id: `${nodeId}-${newNodeId}`,
@@ -481,7 +492,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
                 animated: true,
               }
 
-              setEdges((eds) => [...eds, newEdge])
+              setEdges((eds: Edge[]) => [...eds, newEdge])
 
               const newNodesToCreate: Node<RecipeNodeData>[] = []
               const newEdgesToCreate: Edge[] = []
@@ -534,10 +545,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
               })
 
               if (newNodesToCreate.length > 0) {
-                setNodes((nds) => [...nds, ...newNodesToCreate])
+                setNodes((nds: Node<RecipeNodeData>[]) => [...nds, ...newNodesToCreate])
               }
               if (newEdgesToCreate.length > 0) {
-                setEdges((eds) => [...eds, ...newEdgesToCreate])
+                setEdges((eds: Edge[]) => [...eds, ...newEdgesToCreate])
               }
             }
           }
@@ -572,7 +583,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
           onDelete: () => { },
         },
       }
-      setNodes((nds) => [...nds, newNode])
+      setNodes((nds: Node<RecipeNodeData>[]) => [...nds, newNode])
     },
     [setNodes, existingRecipeNames, settings, iconOnlyMode],
   )
@@ -595,24 +606,24 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       // If current slot is empty, use "Save As" instead
       if (slot.isEmpty) {
-        setShowSaveAsDialog(true)
+        openSaveAsDialog()
         return
       }
 
       // Save to current slot with existing metadata
-      saveFlowToSlot(currentSlot, flow, slot.title, slot.description)
-      setSlots(getSlotMetadata())
+      saveFlow(currentSlot, flow, slot.title, slot.description)
+      refreshSlots()
       toast.success(`Saved to "${slot.title}"`)
     } catch (error) {
       console.error("Save failed:", error)
       toast.error(error instanceof Error ? error.message : "Failed to save")
     }
-  }, [rfInstance, currentSlot, slots])
+  }, [rfInstance, currentSlot, slots, openSaveAsDialog, saveFlow, refreshSlots])
 
   // Quick restore from current active slot
   const onRestore = useCallback(() => {
     try {
-      const flowData = loadFlowFromSlot(currentSlot)
+      const flowData = loadFlow(currentSlot)
 
       if (!flowData) {
         toast.error("No saved flow in current slot")
@@ -630,7 +641,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       console.error("Restore failed:", error)
       toast.error(error instanceof Error ? error.message : "Failed to restore")
     }
-  }, [currentSlot, setNodes, setEdges, setViewport, slots])
+  }, [currentSlot, setNodes, setEdges, setViewport, slots, loadFlow])
 
   // Save As - select slot and enter metadata
   const handleSaveAs = useCallback(
@@ -642,24 +653,23 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       try {
         const flow = rfInstance.toObject()
-        saveFlowToSlot(slotIndex, flow, title, description)
-        setCurrentActiveSlot(slotIndex)
+        saveFlow(slotIndex, flow, title, description)
         setCurrentSlot(slotIndex)
-        setSlots(getSlotMetadata())
+        refreshSlots()
         toast.success(`Saved to slot ${slotIndex}: "${title}"`)
       } catch (error) {
         console.error("Save As failed:", error)
         toast.error(error instanceof Error ? error.message : "Failed to save")
       }
     },
-    [rfInstance],
+    [rfInstance, saveFlow, setCurrentSlot, refreshSlots],
   )
 
   // Load - select different slot to load
   const handleLoad = useCallback(
     (slotIndex: number) => {
       try {
-        const flowData = loadFlowFromSlot(slotIndex)
+        const flowData = loadFlow(slotIndex)
 
         if (!flowData) {
           toast.error("Slot is empty")
@@ -670,7 +680,6 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         setNodes(flowData.nodes || [])
         setEdges(flowData.edges || [])
         setViewport({ x, y, zoom }, { duration: 300 })
-        setCurrentActiveSlot(slotIndex)
         setCurrentSlot(slotIndex)
 
         const slot = slots[slotIndex]
@@ -680,33 +689,32 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         toast.error(error instanceof Error ? error.message : "Failed to load")
       }
     },
-    [setNodes, setEdges, setViewport, slots],
+    [setNodes, setEdges, setViewport, slots, loadFlow, setCurrentSlot],
   )
 
   // Delete slot
   const handleDeleteSlot = useCallback((slotIndex: number) => {
     try {
-      deleteSlot(slotIndex)
-      setSlots(getSlotMetadata())
-      setCurrentSlot(getCurrentActiveSlot())
+      deleteSlotFromStore(slotIndex)
+      refreshSlots()
       toast.success("Slot deleted")
     } catch (error) {
       console.error("Delete failed:", error)
       toast.error(error instanceof Error ? error.message : "Failed to delete slot")
     }
-  }, [])
+  }, [deleteSlotFromStore, refreshSlots])
 
   // Edit slot metadata
   const handleEditSlotMetadata = useCallback((slotIndex: number, title: string, description: string) => {
     try {
       editSlotMetadata(slotIndex, title, description)
-      setSlots(getSlotMetadata())
+      refreshSlots()
       toast.success("Slot metadata updated")
     } catch (error) {
       console.error("Edit failed:", error)
       toast.error(error instanceof Error ? error.message : "Failed to update metadata")
     }
-  }, [])
+  }, [editSlotMetadata, refreshSlots])
 
   const deleteNode = useCallback(
     (nodeId: string) => {
@@ -717,7 +725,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   const duplicateNode = useCallback(
     (nodeId: string) => {
-      const nodeToDuplicate = nodes.find((n) => n.id === nodeId)
+      const nodeToDuplicate = nodes.find((n: Node<RecipeNodeData>) => n.id === nodeId)
       if (!nodeToDuplicate) return
 
       const recipe = nodeToDuplicate.data.recipe
@@ -744,7 +752,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       }
 
       // Deselect all other nodes and add the new one
-      setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode])
+      setNodes((nds: Node<RecipeNodeData>[]) => [...nds.map((n: Node<RecipeNodeData>) => ({ ...n, selected: false })), newNode])
       toast.success(`Duplicated ${recipe.name}`)
     },
     [nodes, existingRecipeNames, setNodes],
@@ -752,7 +760,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
   const onReconnect: OnReconnect = useCallback(
     (oldEdge, newConnection) => {
-      setEdges((els) => reconnectEdge(oldEdge, newConnection, els))
+      setEdges((els: Edge[]) => reconnectEdge(oldEdge, newConnection, els))
     },
     [setEdges],
   )
@@ -767,13 +775,13 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     console.log("[v0] Auto Build started")
     console.log(
       "[v0] Current nodes:",
-      nodes.map((n) => n.data.recipe.name),
+      nodes.map((n: Node<RecipeNodeData>) => n.data.recipe.name),
     )
 
     const newNodesToAdd: Node<RecipeNodeData>[] = []
     const newEdgesToAdd: Edge[] = []
 
-    const allRecipeNames = new Set<string>(nodes.map((n) => n.data.recipe.name))
+    const allRecipeNames = new Set<string>(nodes.map((n: Node<RecipeNodeData>) => n.data.recipe.name))
     const nodesToProcess: Array<{ node: Node<RecipeNodeData>; depth: number; requiresDedicated: boolean }> = []
 
     // Helper to check if a recipe requires dedicated production lines
@@ -789,7 +797,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       return false
     }
 
-    nodes.forEach((node) => {
+    nodes.forEach((node: Node<RecipeNodeData>) => {
       nodesToProcess.push({ node, depth: 0, requiresDedicated: requiresDedicatedLine(node.data.recipe.name) })
     })
 
@@ -797,8 +805,8 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
     const findNodeByRecipeName = (recipeName: string): Node<RecipeNodeData> | undefined => {
       return (
-        nodes.find((n) => n.data.recipe.name === recipeName) ||
-        newNodesToAdd.find((n) => n.data.recipe.name === recipeName)
+        nodes.find((n: Node<RecipeNodeData>) => n.data.recipe.name === recipeName) ||
+        newNodesToAdd.find((n: Node<RecipeNodeData>) => n.data.recipe.name === recipeName)
       )
     }
 
@@ -807,17 +815,17 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     const dedicatedProducerClaims = new Map<string, Set<string>>()
 
     // First pass: identify existing connections from producers to dedicated consumers
-    nodes.forEach((node) => {
+    nodes.forEach((node: Node<RecipeNodeData>) => {
       if (requiresDedicatedLine(node.data.recipe.name)) {
-        node.data.recipe.ingredients.forEach((ingredient) => {
+        node.data.recipe.ingredients.forEach((ingredient: any) => {
           const material = ingredient.item
           const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(material as any)
 
           if (isDuplicatable) {
             // Find if this node already has a producer connected
-            const producerNode = nodes.find((n) =>
+            const producerNode = nodes.find((n: Node<RecipeNodeData>) =>
               n.data.recipe.name === material &&
-              edges.some((e) => e.source === n.id && e.target === node.id)
+              edges.some((e: Edge) => e.source === n.id && e.target === node.id)
             )
 
             if (producerNode) {
@@ -837,7 +845,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       console.log("[v0] Processing node:", recipe.name, "with", recipe.ingredients.length, "ingredients", requiresDedicated ? "(dedicated line)" : "")
 
-      recipe.ingredients.forEach((ingredient, ingredientIndex) => {
+      recipe.ingredients.forEach((ingredient: any, ingredientIndex: number) => {
         const material = ingredient.item
         const isDuplicatable = DUPLICATABLE_NODE_TYPES.includes(material as any)
 
@@ -852,8 +860,8 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         } else {
           // Dedicated case: only reuse if not already claimed by another dedicated consumer
           const candidates = [
-            ...nodes.filter((n) => n.data.recipe.name === material),
-            ...newNodesToAdd.filter((n) => n.data.recipe.name === material)
+            ...nodes.filter((n: Node<RecipeNodeData>) => n.data.recipe.name === material),
+            ...newNodesToAdd.filter((n: Node<RecipeNodeData>) => n.data.recipe.name === material)
           ]
 
           existingProducerNode = candidates.find((producer) => {
@@ -877,7 +885,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         if (existingProducerNode) {
           console.log("[v0] Found existing producer for", material, "- creating edge only", shouldCreateDedicated ? "(dedicated)" : "")
           const edgeId = `${existingProducerNode.id}-${currentNode.id}-${ingredientIndex}`
-          const edgeExists = edges.some((e) => e.id === edgeId) || newEdgesToAdd.some((e) => e.id === edgeId)
+          const edgeExists = edges.some((e: Edge) => e.id === edgeId) || newEdgesToAdd.some((e: Edge) => e.id === edgeId)
 
           if (!edgeExists) {
             newEdgesToAdd.push({
@@ -950,23 +958,23 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
     console.log("[v0] Auto Build complete - adding", newNodesToAdd.length, "nodes and", newEdgesToAdd.length, "edges")
     console.log(
       "[v0] New nodes:",
-      newNodesToAdd.map((n) => n.data.recipe.name),
+      newNodesToAdd.map((n: Node<RecipeNodeData>) => n.data.recipe.name),
     )
 
     if (newNodesToAdd.length > 0 || newEdgesToAdd.length > 0) {
       console.log("[v0] Setting nodes and edges...")
-      setNodes((nds) => [...nds, ...newNodesToAdd])
-      setEdges((eds) => [...eds, ...newEdgesToAdd])
+      setNodes((nds: Node<RecipeNodeData>[]) => [...nds, ...newNodesToAdd])
+      setEdges((eds: Edge[]) => [...eds, ...newEdgesToAdd])
       console.log("[v0] Auto Build finished - nodes and edges added")
     } else {
       console.log("[v0] No new nodes or edges to add")
     }
 
     setIsAutoBuilding(false)
-  }, [nodes, edges, recipes, setNodes, setEdges, isAutoBuilding])
+  }, [nodes, edges, recipes, setNodes, setEdges, isAutoBuilding, settings])
 
   const nodesWithCallbacks = useMemo(() => {
-    return nodes.map((node) => ({
+    return nodes.map((node: Node<RecipeNodeData>) => ({
       ...node,
       data: {
         ...node.data,
@@ -1107,7 +1115,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} className="opacity-40 dark:opacity-20" />
         <Controls />
         <MiniMap
-          nodeColor={(node) => {
+          nodeColor={(node: Node<RecipeNodeData>) => {
             return "hsl(var(--primary))"
           }}
           maskColor="hsl(var(--background) / 0.5)"
@@ -1131,11 +1139,11 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
               <Save className="w-4 h-4" />
               Save
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowSaveAsDialog(true)} className="gap-2">
+            <Button variant="secondary" size="sm" onClick={openSaveAsDialog} className="gap-2">
               <FolderPlus className="w-4 h-4" />
               Save As
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => setShowLoadDialog(true)} className="gap-2">
+            <Button variant="secondary" size="sm" onClick={openLoadDialog} className="gap-2">
               <Files className="w-4 h-4" />
               Load
             </Button>
@@ -1147,7 +1155,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setShowSettingsDialog(true)}
+              onClick={openSettingsDialog}
               className="rounded-full bg-transparent"
               aria-label="Settings"
             >
@@ -1159,7 +1167,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setShowMobileMenu(true)}
+            onClick={openMobileMenu}
             className="lg:hidden gap-2"
           >
             <Menu className="w-4 h-4" />
@@ -1171,7 +1179,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       {/* Slot Management Dialogs */}
       <SlotSelectorDialog
         open={showSaveAsDialog}
-        onOpenChange={setShowSaveAsDialog}
+        onOpenChange={closeSaveAsDialog}
         mode="save"
         slots={slots}
         currentSlot={currentSlot}
@@ -1182,7 +1190,7 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
 
       <SlotSelectorDialog
         open={showLoadDialog}
-        onOpenChange={setShowLoadDialog}
+        onOpenChange={closeLoadDialog}
         mode="load"
         slots={slots}
         currentSlot={currentSlot}
@@ -1194,11 +1202,10 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       {/* Settings Dialog */}
       <SettingsDialog
         open={showSettingsDialog}
-        onOpenChange={setShowSettingsDialog}
+        onOpenChange={closeSettingsDialog}
         settings={settings}
         onSave={(newSettings) => {
-          setSettings(newSettings)
-          saveSettings(newSettings)
+          updateSettings(newSettings)
           toast.success("Settings saved")
         }}
         currentZoom={viewport.zoom}
@@ -1207,15 +1214,15 @@ function ProductionDesignerFlow({ recipes }: ProductionDesignerViewProps) {
       {/* Mobile Menu */}
       <MobileMenuSheet
         open={showMobileMenu}
-        onOpenChange={setShowMobileMenu}
+        onOpenChange={closeMobileMenu}
         onAutoBuild={autoBuild}
         onAutoLayout={() => onLayout("horizontal")}
         onRestore={onRestore}
         onSave={onSave}
-        onSaveAs={() => setShowSaveAsDialog(true)}
-        onLoad={() => setShowLoadDialog(true)}
+        onSaveAs={openSaveAsDialog}
+        onLoad={openLoadDialog}
         onClearCanvas={clearCanvas}
-        onSettings={() => setShowSettingsDialog(true)}
+        onSettings={openSettingsDialog}
         isAutoBuilding={isAutoBuilding}
       />
     </div>

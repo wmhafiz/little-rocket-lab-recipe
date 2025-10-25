@@ -40,6 +40,8 @@ Little Rocket Lab Designer is a crafting recipe visualizer and production line d
 
 ### Additional Libraries
 
+- **Zustand 5.0.2** - Lightweight state management with middleware support
+- **Immer 10.1.1** - Immutable state updates with mutable syntax (used with Zustand)
 - **next-themes** - Theme management (dark/light mode)
 - **class-variance-authority** - Component variant styling
 - **clsx** & **tailwind-merge** - Conditional className utilities
@@ -109,6 +111,13 @@ components/        # React components
 └── *.tsx          # Feature components
 
 lib/               # Shared utilities and data
+├── stores/        # Zustand state management stores
+│   ├── flow-store.ts        # ReactFlow instance management
+│   ├── ui-store.ts          # UI state (dialogs, panels, search)
+│   ├── slot-store.ts        # Multi-slot save/restore system
+│   ├── settings-store.ts    # Designer settings persistence
+│   ├── optimal-production-store.ts  # Production calculations
+│   └── index.ts             # Store exports
 ├── types.ts       # TypeScript type definitions
 ├── utils.ts       # Helper functions
 ├── crafting-data.ts  # Recipe data source
@@ -127,9 +136,17 @@ public/            # Static assets (recipe icons)
 
 **State Management:**
 
-- React Flow's built-in hooks (`useNodesState`, `useEdgesState`, `useReactFlow`)
-- Local component state with `useState`
+- **Zustand** - Centralized state management with slice pattern
+  - `FlowStore` - ReactFlow instance and viewport utilities
+  - `UIStore` - UI state (panels, dialogs, search, filters)
+  - `SlotStore` - Multi-slot save/restore with localStorage persistence
+  - `SettingsStore` - Designer settings with localStorage persistence
+  - `OptimalProductionStore` - Production calculations and requirements
+- React Flow's built-in hooks (`useNodesState`, `useEdgesState`) for node/edge management
 - Theme state via Context API (next-themes)
+- Zustand persist middleware for localStorage integration
+- Zustand devtools middleware for debugging (development only)
+- Immer middleware for simpler immutable updates
 
 **Styling Approach:**
 
